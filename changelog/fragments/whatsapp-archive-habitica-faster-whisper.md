@@ -1,0 +1,4 @@
+- WhatsApp/archive: add opt-in message archiving with SQLite storage, configurable retention, audio file persistence, and an `whatsapp_archive` agent tool for search, summary, and recent message queries.
+- Habitica/plugin: add a bundled Habitica plugin with `habitica` agent tool supporting dashboard, dailies, habits, todos, stats, and task completion actions via the Habitica API.
+- Media/faster-whisper: add `faster-whisper` CLI auto-detection in the local audio transcription chain, with `WHISPER_MODEL` env var support (default `large-v3`) and `.txt` output parsing.
+- WhatsApp/inbound: add `onRawMessage` callback to `monitorWebInbox` that fires for every incoming message before access control filtering, enabling pre-filter archiving.
