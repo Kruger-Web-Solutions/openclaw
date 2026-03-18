@@ -103,11 +103,9 @@ describe("habitica tool", () => {
 
   it("returns error for complete without task_id", async () => {
     const tool = createHabiticaTool(auth);
-    const result = await tool.execute("call-7", { action: "complete" });
-
-    const block = result.content[0]!;
-    const parsed = JSON.parse(block.type === "text" ? block.text : "");
-    expect(parsed).toHaveProperty("error");
+    await expect(tool.execute("call-7", { action: "complete" })).rejects.toThrow(
+      "task_id required",
+    );
   });
 
   it("returns error for unknown action", async () => {
