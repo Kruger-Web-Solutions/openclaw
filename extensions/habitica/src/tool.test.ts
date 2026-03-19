@@ -116,4 +116,23 @@ describe("habitica tool", () => {
     const parsed = JSON.parse(block.type === "text" ? block.text : "");
     expect(parsed.error).toContain("Unknown action");
   });
+
+  it("throws when env vars are missing and no auth override", async () => {
+    delete process.env.HABITICA_USER_ID;
+    delete process.env.HABITICA_API_KEY;
+    const tool = createHabiticaTool();
+    await expect(tool.execute("call-9", { action: "dashboard" })).rejects.toThrow(
+      "Habitica credentials not configured",
+    );
+  });
+
+  it("resolves auth from env vars when no override provided", async () => {
+    process.env.HABITICA_USER_ID = "env-user";
+    process.env.HABITICA_API_KEY = "env-key";
+    const tool = createHabiticaTool();
+    await tool.execute("call-10", { action: "dashboard" });
+    expect(fetchDashboard).toHaveBeenCalledWith({ userId: "env-user", apiKey: "env-key" });
+    delete process.env.HABITICA_USER_ID;
+    delete process.env.HABITICA_API_KEY;
+  });
 });

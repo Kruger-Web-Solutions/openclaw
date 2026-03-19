@@ -1,5 +1,6 @@
 {
   "id": "habitica",
+  "enabledByDefault": true,
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

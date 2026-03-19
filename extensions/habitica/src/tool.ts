@@ -18,7 +18,23 @@ const HabiticaToolSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export function createHabiticaTool(auth: HabiticaAuth) {
+function resolveAuth(authOverride?: HabiticaAuth): HabiticaAuth {
+  if (authOverride) return authOverride;
+  const userId = process.env.HABITICA_USER_ID?.trim();
+  const apiKey = process.env.HABITICA_API_KEY?.trim();
+  if (!userId || !apiKey) {
+    throw new Error(
+      "Habitica credentials not configured. Set HABITICA_USER_ID and HABITICA_API_KEY environment variables (Habitica Settings > API).",
+    );
+  }
+  return { userId, apiKey };
+}
+
+/**
+ * @param authOverride - When provided, credentials are used directly (useful for tests).
+ *   When omitted, credentials are resolved from process.env at execute time.
+ */
+export function createHabiticaTool(authOverride?: HabiticaAuth) {
   return {
     name: "habitica",
     label: "Habitica",
@@ -27,6 +43,7 @@ export function createHabiticaTool(auth: HabiticaAuth) {
       "Interact with Habitica: fetch dashboard (dailies, habits, todos, stats), individual task lists, or complete a task.",
     parameters: HabiticaToolSchema,
     execute: async (_toolCallId: string, rawParams: Record<string, unknown>) => {
+      const auth = resolveAuth(authOverride);
       const action = readStringParam(rawParams, "action", { required: true }) ?? "dashboard";
 
       if (action === "dashboard") {
