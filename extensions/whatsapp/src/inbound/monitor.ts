@@ -21,6 +21,10 @@ import {
 import { downloadInboundMedia } from "./media.js";
 import { createWebSendApi } from "./send-api.js";
 import type { WebInboundMessage, WebListenerCloseReason } from "./types.js";
+import {
+  createOutboundRateLimiter,
+  type OutboundRateLimitConfig,
+} from "../outbound-rate-limit.js";
 
 export async function monitorWebInbox(options: {
   verbose: boolean;
@@ -36,6 +40,8 @@ export async function monitorWebInbox(options: {
   shouldDebounce?: (msg: WebInboundMessage) => boolean;
   /** Optional callback invoked for every raw message BEFORE access control filtering. Used for archiving. */
   onRawMessage?: (raw: proto.IWebMessageInfo, accountId: string) => void;
+  /** Outbound message rate limiting config. When set, wraps sock.sendMessage with a sliding-window limiter. */
+  outboundRateLimit?: OutboundRateLimitConfig;
 }) {
   const inboundLogger = getChildLogger({ module: "web-inbound" });
   const inboundConsoleLog = createSubsystemLogger("gateway/channels/whatsapp").child("inbound");
@@ -43,6 +49,13 @@ export async function monitorWebInbox(options: {
     authDir: options.authDir,
   });
   await waitForWaConnection(sock);
+  // Wrap sock.sendMessage with rate limiter -- covers ALL outbound paths (auto-reply
+  // closures, createWebSendApi, and access-control pairing replies) since they all
+  // share this single socket instance. A fresh limiter is created each reconnect cycle.
+  const rateLimiter = createOutboundRateLimiter(options.outboundRateLimit);
+  const _origSendMessage = sock.sendMessage.bind(sock);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (sock as any).sendMessage = rateLimiter.wrapSendMessage(_origSendMessage);
   const connectedAtMs = Date.now();
 
   let onCloseResolve: ((reason: WebListenerCloseReason) => void) | null = null;

@@ -58,27 +58,35 @@ export function createWhatsAppArchiveTool(db: DatabaseSync): ChannelAgentTool {
           query: params.query,
           limit: params.limit,
         });
+        const enriched = messages.map((msg) => ({
+          ...msg,
+          is_voice_note: msg.media_type?.startsWith("audio/") ?? false,
+        }));
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify({ count: messages.length, messages }, null, 2),
+              text: JSON.stringify({ count: enriched.length, messages: enriched }, null, 2),
             },
           ],
-          details: { count: messages.length, messages },
+          details: { count: enriched.length, messages: enriched },
         };
       }
 
       // action === "recent"
       const messages = getRecentMessages(db, params.limit ?? 50);
+      const enriched = messages.map((msg) => ({
+        ...msg,
+        is_voice_note: msg.media_type?.startsWith("audio/") ?? false,
+      }));
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({ count: messages.length, messages }, null, 2),
+            text: JSON.stringify({ count: enriched.length, messages: enriched }, null, 2),
           },
         ],
-        details: { count: messages.length, messages },
+        details: { count: enriched.length, messages: enriched },
       };
     },
   };

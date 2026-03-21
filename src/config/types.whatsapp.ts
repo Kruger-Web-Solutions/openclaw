@@ -79,6 +79,13 @@ type WhatsAppSharedConfig = {
   ackReaction?: WhatsAppAckReactionConfig;
   /** Debounce window (ms) for batching rapid consecutive messages from the same sender (0 to disable). */
   debounceMs?: number;
+  /** Outbound message rate limiting to prevent WhatsApp anti-spam detection. */
+  outboundRateLimit?: {
+    /** Maximum outbound messages per sliding window. Default: 30. */
+    maxMessages?: number;
+    /** Sliding window duration in seconds. Default: 60. */
+    windowSeconds?: number;
+  };
   /** Heartbeat visibility settings. */
   heartbeat?: ChannelHeartbeatVisibilityConfig;
   /** Channel health monitor overrides for this channel/account. */

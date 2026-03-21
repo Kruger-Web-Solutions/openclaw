@@ -201,6 +201,7 @@ export async function monitorWebChannel(
       debounceMs: inboundDebounceMs,
       shouldDebounce,
       onRawMessage: tuning.onRawMessage,
+      outboundRateLimit: account.outboundRateLimit,
       onMessage: async (msg: WebInboundMsg) => {
         handledMessages += 1;
         lastMessageAt = Date.now();

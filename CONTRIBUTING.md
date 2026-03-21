@@ -8,6 +8,8 @@ Welcome to the lobster tank! 🦞
 - **Vision:** [`VISION.md`](VISION.md)
 - **Discord:** https://discord.gg/qkhbAGHRBT
 - **X/Twitter:** [@steipete](https://x.com/steipete) / [@openclaw](https://x.com/openclaw)
+- **Fork / custom build (Cursor & contributors):** [Fork workflow: sync upstream, deploy, add value](docs/contributing-fork-workflow.md) — use this repo, pull from upstream without breaking things, and deploy safely.
+- **Best practices (Cursor & operators):** [OpenClaw best practices](docs/openclaw-best-practices.md) — optimize already-running OpenClaw after an update (tools, env, cron, config).
 
 ## Maintainers
 

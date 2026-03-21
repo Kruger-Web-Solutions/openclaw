@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "openclaw": {
+      "command": "ssh",
+      "args": [
+        "-i", "<path to your SSH private key, e.g. C:/Users/you/.ssh/id_rsa>",
+        "-o", "BatchMode=yes",
+        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", "ServerAliveInterval=30",
+        "<user>@<vm-ip>",
+        "cd /home/<user>/openclaw-custom && /usr/bin/node --no-warnings tools/openclaw-mcp-server.mjs"
+      ]
+    }
+  }
+}
