@@ -182,7 +182,7 @@ add_cron '{
   "id": "accountability-audit",
   "schedule": "30 18 * * 1-5",
   "enabled": true,
-  "prompt": "Run accountability audit. Use habitica dailies to count incomplete dailies. Use whatsapp_archive to check last inbound message from Henzard. If 3+ dailies are incomplete AND no inbound message in last 3 hours: send a gentle escalation to Alicia at +27769417863 and Rhyno at +27832922042 via whatsapp_send: '\''Hey [name], just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.'\'' Do NOT escalate if it is weekend. Do NOT edit TOOLS.md.",
+  "prompt": "Run accountability audit. Use habitica dailies to count incomplete dailies. Use whatsapp_archive to check last inbound message from Henzard. If 3+ dailies are incomplete AND no inbound message in last 3 hours: send a gentle escalation to Alicia (ALICIA_WA from contacts.env) and Rhyno (RHYNO_WA from contacts.env) via whatsapp_send: 'Hey [name], just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' Do NOT escalate if it is weekend. Do NOT edit TOOLS.md.",
   "delivery": {"channel": "whatsapp", "to": "default"}
 }'
 

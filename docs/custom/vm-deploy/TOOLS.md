@@ -106,11 +106,11 @@ Log each bottle in SparkyFitness as 1200ml water using `sparky_fitness log_water
 
 | Name                          | Number          | Role                       |
 | ----------------------------- | --------------- | -------------------------- |
-| Alicia Kruger (wife)          | +27 76 941 7863 | Primary accountability     |
-| Rhyno Page (business partner) | +27 83 292 2042 | Work + goal accountability |
+| Alicia Kruger (wife)          | see contacts.env | Primary accountability     |
+| Rhyno Page (business partner) | see contacts.env | Work + goal accountability |
 
 ### Escalation trigger
-If Henzard has 3+ Habitica dailies uncompleted by 6pm AND has not responded to 3 consecutive cron WhatsApp messages that day → WhatsApp both:
+If Henzard has 3+ Habitica dailies uncompleted by 6pm AND has not responded to 3 consecutive cron WhatsApp messages that day → WhatsApp both using the numbers from `~/.openclaw/secrets/contacts.env`:
 
 > "Hey [name], just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up."
 

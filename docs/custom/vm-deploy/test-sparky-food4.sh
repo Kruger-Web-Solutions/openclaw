@@ -1,5 +1,6 @@
 #!/bin/bash
-TOKEN="rsqwYSsihAZJoRuTbvUAfkmgnCYcnhboZYbBEWaMNHFglNdcHVTYeGpjQkgwqTrb"
+TOKEN=$(cat ~/.openclaw/secrets/sparky-token 2>/dev/null)
+if [ -z "$TOKEN" ]; then echo "ERROR: ~/.openclaw/secrets/sparky-token missing"; exit 1; fi
 
 echo "=== Food search with name param ==="
 curl -s -H "x-api-key: $TOKEN" \

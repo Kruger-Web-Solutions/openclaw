@@ -1,6 +1,11 @@
 #!/bin/bash
 # Todoist setup script - creates all required projects, sections, and labels
-TODOIST_TOKEN="c3dbebe5e4d95b9a858c4cd7e222c18da7c4e0aa"
+TODOIST_TOKEN=$(cat ~/.openclaw/secrets/todoist-token 2>/dev/null)
+if [ -z "$TODOIST_TOKEN" ]; then
+  echo "ERROR: ~/.openclaw/secrets/todoist-token missing"
+  echo "Get your token from: todoist.com → Settings → Integrations → Developer"
+  exit 1
+fi
 BASE="https://api.todoist.com/api/v1"
 
 H="Authorization: Bearer $TODOIST_TOKEN"

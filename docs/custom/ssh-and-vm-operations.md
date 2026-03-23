@@ -171,8 +171,8 @@ These lines were added to `~/.bashrc` during initial setup:
 
 ```bash
 export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"
-export HABITICA_USER_ID="f84544da-0d30-488e-a66f-82adf4ea26c3"
-export HABITICA_API_KEY="d08e556e-6ff3-427f-ba34-e4066fba3520"
+export HABITICA_USER_ID="<your-habitica-user-id>"
+export HABITICA_API_KEY="<your-habitica-api-key>"
 export OPENROUTER_API_KEY="sk-or-..."
 ```
 
@@ -183,8 +183,8 @@ These are only active for interactive shells and `openclaw agent --local` runs. 
 ```ini
 # ~/.config/systemd/user/openclaw-gateway.service (excerpt)
 [Service]
-Environment="HABITICA_USER_ID=f84544da-0d30-488e-a66f-82adf4ea26c3"
-Environment="HABITICA_API_KEY=d08e556e-6ff3-427f-ba34-e4066fba3520"
+Environment="HABITICA_USER_ID=<your-habitica-user-id>"
+Environment="HABITICA_API_KEY=<your-habitica-api-key>"
 Environment="OPENROUTER_API_KEY=sk-or-..."
 Environment="OPENCLAW_GATEWAY_TOKEN=your-token"
 ```

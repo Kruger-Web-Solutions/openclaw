@@ -1,5 +1,6 @@
 #!/bin/bash
-TOKEN="rsqwYSsihAZJoRuTbvUAfkmgnCYcnhboZYbBEWaMNHFglNdcHVTYeGpjQkgwqTrb"
+TOKEN=$(cat ~/.openclaw/secrets/sparky-token 2>/dev/null)
+if [ -z "$TOKEN" ]; then echo "ERROR: ~/.openclaw/secrets/sparky-token missing"; exit 1; fi
 echo "=== Get meal types ==="
 curl -s -H "x-api-key: $TOKEN" "http://localhost:3004/api/meal-types" | python3 -c "
 import sys, json

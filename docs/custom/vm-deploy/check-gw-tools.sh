@@ -1,5 +1,6 @@
 #!/bin/bash
-GW_TOKEN="2aa6a25578011d76b4663f1e01b18f28f1db4a5aa2b0050b"
+GW_TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('token',''))" 2>/dev/null)
+if [ -z "$GW_TOKEN" ]; then echo "ERROR: Could not read gateway token"; exit 1; fi
 GW="http://localhost:18789"
 
 echo "=== Gateway available tools ==="

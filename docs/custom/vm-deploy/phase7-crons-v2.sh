@@ -1,14 +1,26 @@
 #!/bin/bash
 # Phase 7 v2: Create all personal-assistant cron jobs using openclaw CLI flags
 # Run on the VM: bash /tmp/phase7-crons-v2.sh
-# Henzard's WhatsApp: +27711304241
 # All times in Africa/Johannesburg (SAST = UTC+2)
+#
+# REQUIRES: ~/.openclaw/secrets/contacts.env
+#   Copy docs/custom/vm-deploy/contacts.env.example to that path and fill in real numbers.
 
 set -euo pipefail
 source ~/.profile 2>/dev/null || true
 export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"
 
-TO="+27711304241"
+# ── Load phone numbers from secrets (never hardcoded) ────────
+source ~/.openclaw/secrets/contacts.env 2>/dev/null || {
+  echo "ERROR: ~/.openclaw/secrets/contacts.env not found."
+  echo "Copy docs/custom/vm-deploy/contacts.env.example to ~/.openclaw/secrets/contacts.env and fill in real phone numbers."
+  exit 1
+}
+: "${OWNER_WA:?OWNER_WA not set in contacts.env}"
+: "${ALICIA_WA:?ALICIA_WA not set in contacts.env}"
+: "${RHYNO_WA:?RHYNO_WA not set in contacts.env}"
+
+TO="$OWNER_WA"
 TZ_SAST="Africa/Johannesburg"
 
 echo "=== Phase 7 v2: Creating personal-assistant cron jobs ==="
@@ -126,7 +138,7 @@ add "sleep-prep" \
 add "accountability-audit" \
   --name "accountability-audit" --cron "30 18 * * 1-5" --tz "$TZ_SAST" \
   --session isolated --announce --channel whatsapp --to "$TO" \
-  --message "Run accountability audit. Use habitica dailies to count incomplete dailies. Use whatsapp_archive to check last inbound message time from Henzard. If 3 or more dailies are incomplete AND no inbound message in last 3 hours: use whatsapp_send to message Alicia at +27769417863: 'Hey Alicia, just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' And whatsapp_send to Rhyno at +27832922042: 'Hey Rhyno, just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' Then summarize what action was taken."
+  --message "Run accountability audit. Use habitica dailies to count incomplete dailies. Use whatsapp_archive to check last inbound message time from Henzard. If 3 or more dailies are incomplete AND no inbound message in last 3 hours: use whatsapp_send to message Alicia at $ALICIA_WA: 'Hey Alicia, just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' And whatsapp_send to Rhyno at $RHYNO_WA: 'Hey Rhyno, just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' Then summarize what action was taken."
 
 # ── FRIDAY CRONS ─────────────────────────────────────────────────────────────
 

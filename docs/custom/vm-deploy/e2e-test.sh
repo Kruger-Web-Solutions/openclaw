@@ -5,11 +5,18 @@
 # ============================================================
 set -uo pipefail
 
-GW_TOKEN="2aa6a25578011d76b4663f1e01b18f28f1db4a5aa2b0050b"
+# ── Read tokens from secret files (never hardcoded) ─────────
+GW_TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('token',''))" 2>/dev/null)
+SPARKY_TOKEN=$(cat ~/.openclaw/secrets/sparky-token 2>/dev/null)
+TODOIST_TOKEN=$(cat ~/.openclaw/secrets/todoist-token 2>/dev/null)
+source ~/.openclaw/secrets/contacts.env 2>/dev/null || { echo "ERROR: ~/.openclaw/secrets/contacts.env not found. Copy contacts.env.example and fill in real values."; exit 1; }
+
+if [ -z "$GW_TOKEN" ]; then echo "ERROR: Could not read gateway token from ~/.openclaw/openclaw.json"; exit 1; fi
+if [ -z "$SPARKY_TOKEN" ]; then echo "ERROR: ~/.openclaw/secrets/sparky-token missing"; exit 1; fi
+if [ -z "$TODOIST_TOKEN" ]; then echo "ERROR: ~/.openclaw/secrets/todoist-token missing"; exit 1; fi
+
 GW="http://localhost:18789"
-SPARKY_TOKEN="rsqwYSsihAZJoRuTbvUAfkmgnCYcnhboZYbBEWaMNHFglNdcHVTYeGpjQkgwqTrb"
 SPARKY="http://localhost:3004/api"
-TODOIST_TOKEN="c3dbebe5e4d95b9a858c4cd7e222c18da7c4e0aa"
 TODOIST="https://api.todoist.com/api/v1"
 OPENCLAW="$HOME/.npm-global/bin/openclaw"
 TODAY=$(date +%Y-%m-%d)
@@ -296,14 +303,23 @@ section "7. WHATSAPP — ROUND-TRIP TEST"
 # ============================================================
 
 echo "  Sending test message to WhatsApp..."
-WA_RESP=$(python3 - << 'PYEOF'
-import json, urllib.request
+WA_RESP=$(python3 - << PYEOF
+import json, urllib.request, os
 
-token = "2aa6a25578011d76b4663f1e01b18f28f1db4a5aa2b0050b"
-msg = "[E2E TEST ✅] Personal assistant verified — all systems nominal. SparkyFitness, Habitica, Todoist, WhatsApp, and 52 crons are live."
+token = open(os.path.expanduser("~/.openclaw/openclaw.json")).read()
+token = json.loads(token).get("token", "")
+contacts_path = os.path.expanduser("~/.openclaw/secrets/contacts.env")
+owner_wa = ""
+for line in open(contacts_path):
+    line = line.strip()
+    if line.startswith("OWNER_WA="):
+        owner_wa = line.split("=", 1)[1].strip()
+        break
+
+msg = "[E2E TEST] Personal assistant verified — all systems nominal."
 payload = json.dumps({
     "tool": "message",
-    "args": {"action": "send", "channel": "whatsapp", "to": "+27711304241", "message": msg}
+    "args": {"action": "send", "channel": "whatsapp", "to": owner_wa, "message": msg}
 }).encode()
 req = urllib.request.Request(
     "http://localhost:18789/tools/invoke",
@@ -320,7 +336,7 @@ except Exception as e:
 PYEOF
 )
 if [ "$WA_RESP" = "OK" ]; then
-  pass "WhatsApp test message sent to +27711304241"
+  pass "WhatsApp test message sent to $OWNER_WA"
 else
   fail "WhatsApp → $WA_RESP"
 fi

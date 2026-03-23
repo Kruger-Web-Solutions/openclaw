@@ -4,7 +4,8 @@ docker exec sparky-sparkyfitness-server-1 \
   grep -A 30 "INSERT.*food_entries\|INSERT.*food_entry" /app/SparkyFitnessServer/repositories/foodEntryRepository.js 2>/dev/null | head -50
 
 echo "=== Food search endpoint test ==="
-TOKEN="rsqwYSsihAZJoRuTbvUAfkmgnCYcnhboZYbBEWaMNHFglNdcHVTYeGpjQkgwqTrb"
+TOKEN=$(cat ~/.openclaw/secrets/sparky-token 2>/dev/null)
+if [ -z "$TOKEN" ]; then echo "ERROR: ~/.openclaw/secrets/sparky-token missing"; exit 1; fi
 curl -s -H "x-api-key: $TOKEN" \
   "http://localhost:3004/api/foods/search?query=chicken+breast&limit=2" 2>/dev/null | head -c 800
 

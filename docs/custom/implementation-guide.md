@@ -336,15 +336,15 @@ Set in **both** locations:
 systemctl --user edit openclaw-gateway.service
 # Add:
 # [Service]
-# Environment="HABITICA_USER_ID=f84544da-0d30-488e-a66f-82adf4ea26c3"
-# Environment="HABITICA_API_KEY=d08e556e-6ff3-427f-ba34-e4066fba3520"
+# Environment="HABITICA_USER_ID=<your-habitica-user-id>"
+# Environment="HABITICA_API_KEY=<your-habitica-api-key>"
 
 systemctl --user daemon-reload
 systemctl --user restart openclaw-gateway
 
 # 2. Shell profile (for CLI agent and cron)
-echo 'export HABITICA_USER_ID="f84544da-0d30-488e-a66f-82adf4ea26c3"' >> ~/.bashrc
-echo 'export HABITICA_API_KEY="d08e556e-6ff3-427f-ba34-e4066fba3520"' >> ~/.bashrc
+echo 'export HABITICA_USER_ID="<your-habitica-user-id>"' >> ~/.bashrc
+echo 'export HABITICA_API_KEY="<your-habitica-api-key>"' >> ~/.bashrc
 ```
 
 ---
@@ -1191,7 +1191,7 @@ Actions: `diary`, `summary`, `goals`, `log_food`, `log_water`, `weight`, `sleep`
 
 ### Overview
 
-52 cron jobs covering the user's full daily life. These run inside the OpenClaw gateway via `openclaw cron add`. Each cron fires an agent prompt with `--announce` (WhatsApp delivery) and an optional `--channel whatsapp --to "+27711304241"` for accountability partner messages.
+52 cron jobs covering the user's full daily life. These run inside the OpenClaw gateway via `openclaw cron add`. Each cron fires an agent prompt with `--announce` (WhatsApp delivery) and an optional `--channel whatsapp --to "$OWNER_WA"` for accountability partner messages (loaded from `~/.openclaw/secrets/contacts.env`).
 
 ### Cron categories
 
@@ -1221,10 +1221,10 @@ openclaw cron add \
   --message "Good morning Henzard. It is 5am. Time for Bible reading..." \
   --announce \
   --channel whatsapp \
-  --to "+27711304241"
+  --to "$OWNER_WA"
 ```
 
-`--announce` sends the result to WhatsApp. `--channel` + `--to` are only needed when sending to a different recipient (e.g., accountability partners).
+`--announce` sends the result to WhatsApp. `--channel` + `--to` are only needed when sending to a different recipient (e.g., accountability partners). Phone numbers are loaded from `~/.openclaw/secrets/contacts.env`.
 
 The script is at `docs/custom/vm-deploy/phase7-crons-v2.sh`.
 
@@ -1508,12 +1508,14 @@ sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-compose-plu
 
 **Fix:** Use the gateway HTTP API directly:
 ```bash
+GW_TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d['token'])")
+source ~/.openclaw/secrets/contacts.env
 curl -s -X POST http://localhost:18789/tools/invoke \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $GW_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "$(python3 -c "import json,sys; print(json.dumps({'tool':'message','args':{'action':'send','channel':'whatsapp','to':'+27711304241','message':sys.argv[1]}}))" "Your message here")"
+  -d "$(python3 -c "import json,sys; print(json.dumps({'tool':'message','args':{'action':'send','channel':'whatsapp','to':sys.argv[1],'message':sys.argv[2]}}))" "$OWNER_WA" "Your message here")"
 ```
-Token is at `~/.openclaw/openclaw.json` → top-level `token` field.
+Tokens are at `~/.openclaw/openclaw.json` (gateway) and `~/.openclaw/secrets/contacts.env` (phone numbers).
 
 ---
 

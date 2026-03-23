@@ -1,4 +1,9 @@
 #!/bin/bash
+GW_TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('token',''))" 2>/dev/null)
+if [ -z "$GW_TOKEN" ]; then echo "ERROR: Could not read gateway token"; exit 1; fi
+source ~/.openclaw/secrets/contacts.env 2>/dev/null || { echo "ERROR: ~/.openclaw/secrets/contacts.env missing"; exit 1; }
+: "${OWNER_WA:?OWNER_WA not set in contacts.env}"
+
 echo "=== Check .cursor/mcp.json ==="
 cat ~/.openclaw/workspace/.cursor/mcp.json 2>/dev/null || cat ~/.cursor/mcp.json 2>/dev/null || echo "(not found)"
 
@@ -26,9 +31,8 @@ echo "=== Check workspace docs for agent tool config ==="
 ls ~/.openclaw/workspace/docs/ 2>/dev/null | head -20
 
 echo ""
-echo "=== Available tools shown in habitica response ==="
-# The fact habitica works - let's see what tool categories exist
-curl -s -X POST -H "Authorization: Bearer 2aa6a25578011d76b4663f1e01b18f28f1db4a5aa2b0050b" \
+echo "=== Send internal test message ==="
+curl -s -X POST -H "Authorization: Bearer $GW_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"tool":"message","args":{"action":"send","channel":"whatsapp","to":"+27711304241","message":"[INTERNAL TEST] ignore"}}' \
+  -d "{\"tool\":\"message\",\"args\":{\"action\":\"send\",\"channel\":\"whatsapp\",\"to\":\"$OWNER_WA\",\"message\":\"[INTERNAL TEST] ignore\"}}" \
   "http://localhost:18789/tools/invoke" 2>/dev/null | head -c 200
