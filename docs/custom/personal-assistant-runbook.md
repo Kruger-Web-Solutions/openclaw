@@ -344,11 +344,50 @@ curl http://localhost:18789/health
 
 ### Read logs
 
+Prefer the native OpenClaw CLI — it parses JSONL into readable output and works over the RPC connection:
+
+```bash
+# Live tail (recommended)
+openclaw logs --follow
+
+# Channel-scoped — only WhatsApp activity
+openclaw channels logs --channel whatsapp
+
+# Raw JSONL for piping to jq/grep
+openclaw logs --follow --json
+
+# Plain text (no ANSI colors)
+openclaw logs --follow --plain
+```
+
+Log file is at `~/.openclaw/logs/openclaw.log` (persistent across reboots).
+
+If the gateway is unreachable, fall back to systemd:
+
 ```bash
 journalctl --user -u openclaw-gateway -n 100 --no-pager
-# Follow live:
 journalctl --user -u openclaw-gateway -f
 ```
+
+### Raise verbosity for one-off debugging
+
+Without editing `openclaw.json`, set the level for a single gateway run:
+
+```bash
+OPENCLAW_LOG_LEVEL=debug openclaw gateway run
+```
+
+Or add a targeted flag for one channel only (no restart needed — edit `openclaw.json`, gateway hot-reloads):
+
+```json
+{
+  "diagnostics": {
+    "flags": ["whatsapp.*"]
+  }
+}
+```
+
+Remove the `diagnostics` block when done to keep logs clean.
 
 ### Gateway won't start after config change
 
@@ -411,6 +450,7 @@ If Alicia's or Rhyno's number changes, or you add/remove an accountability partn
 
 | What | Path on VM | How to get |
 |---|---|---|
+| Gateway log | `~/.openclaw/logs/openclaw.log` | `openclaw logs --follow` or `tail -f ~/.openclaw/logs/openclaw.log` |
 | Gateway token | `~/.openclaw/openclaw.json` → `token` field | Auto-generated; read with `python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/.openclaw/openclaw.json')))['token'])"` |
 | SparkyFitness API key | `~/.openclaw/secrets/sparky-token` | Web UI: Settings → API Keys |
 | Todoist API token | `~/.openclaw/secrets/todoist-token` | todoist.com → Settings → Integrations → Developer |
