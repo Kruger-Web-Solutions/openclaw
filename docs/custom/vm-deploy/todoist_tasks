@@ -1,0 +1,121 @@
+#!/bin/bash
+# todoist_tasks — shell wrapper for OpenClaw gateway exec-fallback → Todoist REST API
+# Deploy to: ~/bin/todoist_tasks  (chmod +x)
+# Usage: todoist_tasks <action> [opts]
+#   list [project_name]              list active tasks
+#   list --label in-progress         list tasks with a label
+#   create "content" [project_name]  create a task
+#   close "content_fragment"         close first task matching the fragment
+#   grocery "item [store]"           add to Shopping project
+
+set -euo pipefail
+
+TOKEN=$(cat "$HOME/.openclaw/secrets/todoist-token" 2>/dev/null || true)
+BASE="https://api.todoist.com/api/v1"
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+
+PROJ_SHOPPING="6CrfjhGM476WQJX7"
+PROJ_WEIGHSOFT="6CrfjhGM4V85H3wj"
+PROJ_NEDBANK="6CrfjhGM4HhFMc3h"
+PROJ_HOME="6gF6W9VPrmQJF8Q8"
+PROJ_BOOKS="6gF6W9fw2w7MvfjJ"
+
+if [ -z "$TOKEN" ]; then
+  echo "ERROR: Todoist token not found at ~/.openclaw/secrets/todoist-token"
+  exit 1
+fi
+
+_get()  { curl -sf -H "Authorization: Bearer $TOKEN" "$BASE$1" -o "$TMP"; cat "$TMP"; }
+_post() { curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$2" "$BASE$1" -o "$TMP"; cat "$TMP"; }
+
+project_id() {
+  case "${1,,}" in
+    shopping|groceries)    echo "$PROJ_SHOPPING" ;;
+    weighsoft)             echo "$PROJ_WEIGHSOFT" ;;
+    nedbank)               echo "$PROJ_NEDBANK" ;;
+    home)                  echo "$PROJ_HOME" ;;
+    books|"books to read") echo "$PROJ_BOOKS" ;;
+    *)                     echo "" ;;
+  esac
+}
+
+ACTION="${1:-list}"
+
+case "$ACTION" in
+
+  list)
+    FILTER="${2:-}"
+    if [[ "$FILTER" == "--label" ]]; then
+      _get "/tasks?label=${3:-}" > /dev/null
+    elif [ -n "$FILTER" ] && [[ "$FILTER" != --* ]]; then
+      PID=$(project_id "$FILTER")
+      if [ -n "$PID" ]; then
+        _get "/tasks?project_id=$PID" > /dev/null
+      else
+        _get "/tasks?label=$FILTER" > /dev/null
+      fi
+    else
+      _get "/tasks" > /dev/null
+    fi
+    python3 -c "
+import json, sys
+data = json.load(open('$TMP'))
+tasks = data.get('results', data) if isinstance(data, dict) else data
+if not tasks:
+    print('No tasks found.')
+else:
+    for i, t in enumerate(tasks, 1):
+        due = (t.get('due') or {})
+        due_str = ' (due ' + due.get('date','') + ')' if due else ''
+        print(f'  {i}. {t.get(\"content\",\"?\")}' + due_str)
+"
+    ;;
+
+  create)
+    CONTENT="${2:?task content required}"
+    PROJ_NAME="${3:-}"
+    PID=$(project_id "$PROJ_NAME")
+    if [ -n "$PID" ]; then
+      _post "/tasks" "{\"content\":$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$CONTENT"),\"project_id\":\"$PID\"}" > /dev/null
+    else
+      _post "/tasks" "{\"content\":$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$CONTENT")}" > /dev/null
+    fi
+    python3 -c "import json; t=json.load(open('$TMP')); print('Created: ' + t.get('content','?'))"
+    ;;
+
+  close)
+    FRAGMENT="${2:?task name fragment required}"
+    _get "/tasks" > /dev/null
+    TASK_ID=$(python3 -c "
+import json, sys
+data = json.load(open('$TMP'))
+tasks = data.get('results', data) if isinstance(data, dict) else data
+frag = sys.argv[1].lower()
+for t in tasks:
+    if frag in t.get('content','').lower():
+        print(t['id'])
+        break
+" "$FRAGMENT")
+    if [ -z "$TASK_ID" ]; then
+      echo "No open task found matching: $FRAGMENT"
+      exit 1
+    fi
+    curl -sf -X POST -H "Authorization: Bearer $TOKEN" "$BASE/tasks/$TASK_ID/close" > /dev/null
+    echo "Closed task matching: $FRAGMENT"
+    ;;
+
+  grocery)
+    ITEM="${2:?item name required}"
+    STORE="${3:-Checkers}"
+    LABEL="$ITEM ($STORE)"
+    _post "/tasks" "{\"content\":$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$LABEL"),\"project_id\":\"$PROJ_SHOPPING\"}" > /dev/null
+    echo "Added to Shopping: $ITEM ($STORE)"
+    ;;
+
+  *)
+    echo "Unknown action: $ACTION"
+    echo "Usage: todoist_tasks list|create|close|grocery ..."
+    exit 1
+    ;;
+esac

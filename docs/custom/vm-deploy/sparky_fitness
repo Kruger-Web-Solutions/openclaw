@@ -1,0 +1,150 @@
+#!/bin/bash
+# sparky_fitness — shell wrapper for OpenClaw gateway exec-fallback → SparkyFitness API
+# Deploy to: ~/bin/sparky_fitness  (chmod +x)
+# Usage: sparky_fitness <action> [opts]
+#   summary                          today macro progress
+#   diary                            full food log for today
+#   goals                            macro targets
+#   log_water <ml>                   log water intake
+#   weight [kg]                      log or read today weight
+#   sleep                            read today sleep
+#   log_food <name> <meal> <g> [cal] [prot] [carbs] [fat]
+
+set -euo pipefail
+
+TOKEN=$(cat "$HOME/.openclaw/secrets/sparky-token" 2>/dev/null || true)
+BASE="http://localhost:3004/api"
+TODAY=$(date +%Y-%m-%d)
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+
+if [ -z "$TOKEN" ]; then
+  echo "ERROR: SparkyFitness token not found at ~/.openclaw/secrets/sparky-token"
+  exit 1
+fi
+
+_get()  { curl -sf -H "x-api-key: $TOKEN" "$BASE$1" -o "$TMP"; }
+_post() { curl -sf -X POST -H "x-api-key: $TOKEN" -H "Content-Type: application/json" -d "$2" "$BASE$1" -o "$TMP"; }
+
+ACTION="${1:-summary}"
+
+case "$ACTION" in
+
+  summary)
+    _get "/dashboard/stats?date=$TODAY" 2>/dev/null || echo "{}" > "$TMP"
+    STATS=$(cat "$TMP")
+    _get "/goals/by-date/$TODAY" 2>/dev/null || echo "{}" > "$TMP"
+    GOALS=$(cat "$TMP")
+    python3 -c "
+import json, sys
+stats = json.loads(sys.argv[1])
+goals = json.loads(sys.argv[2])
+cal   = stats.get('totalCalories') or stats.get('calories') or 0
+prot  = stats.get('totalProtein')  or stats.get('protein')  or 0
+carb  = stats.get('totalCarbs')    or stats.get('carbs')    or 0
+fat   = stats.get('totalFat')      or stats.get('fat')      or 0
+water = stats.get('totalWater')    or stats.get('water')    or 0
+gcal  = goals.get('calories') or 0
+gprot = goals.get('protein')  or 0
+gcarb = goals.get('carbs')    or 0
+gfat  = goals.get('fat')      or 0
+print(f'Macros for $TODAY:')
+print(f'  Calories: {float(cal):.0f} / {float(gcal):.0f} kcal')
+print(f'  Protein:  {float(prot):.1f} / {float(gprot):.1f}g')
+print(f'  Carbs:    {float(carb):.1f} / {float(gcarb):.1f}g')
+print(f'  Fat:      {float(fat):.1f} / {float(gfat):.1f}g')
+print(f'  Water:    {float(water):.0f} ml')
+" "$STATS" "$GOALS"
+    ;;
+
+  diary)
+    _get "/food-entries?selectedDate=$TODAY"
+    python3 -c "
+import json
+entries = json.load(open('$TMP'))
+if not entries:
+    print('No food entries for $TODAY.')
+else:
+    for e in (entries if isinstance(entries, list) else [entries]):
+        name = e.get('food_name') or e.get('name','?')
+        meal = e.get('meal_type','?')
+        cal  = e.get('calories') or 0
+        print(f'  [{meal}] {name} — {float(cal):.0f} kcal')
+"
+    ;;
+
+  goals)
+    _get "/goals/by-date/$TODAY"
+    python3 -c "
+import json
+g = json.load(open('$TMP'))
+print('Macro goals:')
+print(f'  Calories: {float(g.get(\"calories\",0)):.0f} kcal')
+print(f'  Protein:  {float(g.get(\"protein\",0)):.1f}g')
+print(f'  Carbs:    {float(g.get(\"carbs\",0)):.1f}g')
+print(f'  Fat:      {float(g.get(\"fat\",0)):.1f}g')
+"
+    ;;
+
+  log_water)
+    ML="${2:-250}"
+    _post "/measurements/water-intake" "{\"date\":\"$TODAY\",\"amount_ml\":$ML}"
+    echo "Logged ${ML}ml water for $TODAY."
+    ;;
+
+  weight)
+    if [ -n "${2:-}" ]; then
+      _post "/measurements/check-in" "{\"entry_date\":\"$TODAY\",\"weight\":$2}"
+      echo "Logged weight $2 kg for $TODAY."
+    else
+      _get "/measurements/check-in/$TODAY"
+      python3 -c "
+import json
+d = json.load(open('$TMP'))
+w = d.get('weight') or d.get('weight_kg','—')
+print(f'Weight $TODAY: {w} kg')
+"
+    fi
+    ;;
+
+  sleep)
+    _get "/sleep?startDate=$TODAY&endDate=$TODAY"
+    python3 -c "
+import json
+records = json.load(open('$TMP'))
+records = records if isinstance(records, list) else [records]
+if not records or records == [{}]:
+    print('No sleep data for $TODAY.')
+else:
+    for r in records:
+        print(f'  Sleep: {r.get(\"duration_minutes\",\"?\") } min, quality {r.get(\"quality\",\"?\")}')
+"
+    ;;
+
+  log_food)
+    FOOD_NAME="${2:?food name required}"
+    MEAL="${3:?meal required (breakfast/lunch/dinner/snack)}"
+    GRAMS="${4:-100}"
+    CAL="${5:-0}"
+    PROT="${6:-0}"
+    CARB="${7:-0}"
+    FAT="${8:-0}"
+    [[ "$MEAL" == "snack" ]] && MEAL="snacks"
+    FOOD_BODY=$(python3 -c "import json,sys; print(json.dumps({'name':sys.argv[1],'calories_per_100g':float(sys.argv[2]),'protein_per_100g':float(sys.argv[3]),'carbs_per_100g':float(sys.argv[4]),'fat_per_100g':float(sys.argv[5])}))" "$FOOD_NAME" "$CAL" "$PROT" "$CARB" "$FAT")
+    _post "/foods" "$FOOD_BODY"
+    FOOD_ID=$(python3 -c "import json; print(json.load(open('$TMP')).get('id',''))")
+    if [ -z "$FOOD_ID" ]; then
+      echo "ERROR: Could not create food item '$FOOD_NAME'."
+      exit 1
+    fi
+    ENTRY_BODY=$(python3 -c "import json,sys; print(json.dumps({'food_id':sys.argv[1],'meal_type':sys.argv[2],'amount_grams':float(sys.argv[3]),'date':sys.argv[4]}))" "$FOOD_ID" "$MEAL" "$GRAMS" "$TODAY")
+    _post "/food-entries" "$ENTRY_BODY"
+    echo "Logged ${GRAMS}g of $FOOD_NAME ($MEAL) for $TODAY."
+    ;;
+
+  *)
+    echo "Unknown action: $ACTION"
+    echo "Usage: sparky_fitness summary|diary|goals|log_water [ml]|weight [kg]|sleep|log_food <name> <meal> <g>"
+    exit 1
+    ;;
+esac

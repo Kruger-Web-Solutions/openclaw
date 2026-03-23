@@ -203,19 +203,40 @@ When prompting Henzard to confirm completion, always reference the task **name**
 
 ## Tool Inventory
 
-| Tool               | Key Actions                                                                 |
-| ------------------ | --------------------------------------------------------------------------- |
-| `habitica`         | dashboard, dailies, habits, todos, stats, complete, create_todo, score_habit |
-| `todoist_tasks`    | list, get, create, grocery, update, delete, close, reopen, move             |
-| `todoist_projects` | list, get, create, update, delete                                           |
-| `todoist_labels`   | list, get, create, update, delete                                           |
-| `todoist_sections` | list, get, create, update, delete                                           |
-| `cron`             | list, add, update, remove, run                                              |
-| `sparky_fitness`   | diary, log_food, log_water, goals, weight, summary, sleep                   |
-| `whatsapp_send`    | Send WhatsApp message to any contact                                        |
-| `whatsapp_archive` | search, summary, recent — query local message history                       |
-| `whatsapp_status`  | Check WhatsApp session + gateway health                                     |
-| `gateway_health`   | Check gateway uptime and channel states                                     |
+| Tool               | Type              | Key Actions                                                                 |
+| ------------------ | ----------------- | --------------------------------------------------------------------------- |
+| `habitica`         | gateway plugin    | dashboard, dailies, habits, todos, stats, complete, create_todo, score_habit |
+| `sparky_fitness`   | shell script      | summary, diary, goals, log_water, weight, sleep, log_food                   |
+| `todoist_tasks`    | shell script      | list, create, close, grocery                                                |
+| `cron`             | gateway plugin    | list, add, update, remove, run                                              |
+| `whatsapp_send`    | gateway plugin    | Send WhatsApp message to any contact                                        |
+| `whatsapp_archive` | gateway plugin    | search, summary, recent — query local message history                       |
+| `whatsapp_status`  | gateway plugin    | Check WhatsApp session + gateway health                                     |
+| `gateway_health`   | gateway plugin    | Check gateway uptime and channel states                                     |
+
+### Shell script tool syntax (exec via gateway)
+
+`sparky_fitness` and `todoist_tasks` are shell scripts in `~/bin/`. The gateway calls them via `exec`. Use these exact formats:
+
+```
+sparky_fitness summary
+sparky_fitness diary
+sparky_fitness goals
+sparky_fitness log_water 500
+sparky_fitness weight 88.5
+sparky_fitness sleep
+sparky_fitness log_food "Chicken breast" dinner 200 165 31 0 3.6
+
+todoist_tasks list
+todoist_tasks list Nedbank
+todoist_tasks list Weighsoft
+todoist_tasks list --label in-progress
+todoist_tasks create "Fix login bug" Weighsoft
+todoist_tasks close "Fix login bug"
+todoist_tasks grocery "Avocados Checkers"
+```
+
+**Never pass JSON to these scripts** — positional args only.
 
 ### Credentials & Config Paths
 | Resource              | Path                                                                 |
