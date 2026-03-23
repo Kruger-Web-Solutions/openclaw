@@ -87,6 +87,7 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
             completed: t.completed,
             isDue: t.isDue,
             streak: t.streak,
+            notes: t.notes || undefined,
           })),
         });
       }

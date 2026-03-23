@@ -36,9 +36,15 @@ dailies  = [t for t in tasks if t['type']=='daily'  and t.get('isDue') and not t
 todos    = [t for t in tasks if t['type']=='todo'   and not t.get('completed')]
 habits   = [t for t in tasks if t['type']=='habit']
 print(f'\nOverdue dailies ({len(dailies)}):')
-for t in dailies: print(f'  - {t[\"text\"]}')
+for t in dailies:
+    notes = t.get('notes','').strip()
+    n = f' — {notes}' if notes else ''
+    print(f'  - {t[\"text\"]}{n}')
 print(f'\nIncomplete todos ({len(todos)}):')
-for t in todos: print(f'  - {t[\"text\"]}')
+for t in todos:
+    notes = t.get('notes','').strip()
+    n = f' — {notes}' if notes else ''
+    print(f'  - {t[\"text\"]}{n}')
 print(f'\nHabits ({len(habits)}):')
 for t in habits: print(f'  - {t[\"text\"]}')
 "
@@ -52,7 +58,10 @@ tasks = json.load(open('$TMP'))['data']
 due = [t for t in tasks if t.get('isDue') and not t.get('completed')]
 done = [t for t in tasks if t.get('completed')]
 print(f'Dailies due ({len(due)}):')
-for t in due: print(f'  - {t[\"text\"]} (streak: {t.get(\"streak\",0)})')
+for t in due:
+    notes = t.get('notes','').strip()
+    n = f' — {notes}' if notes else ''
+    print(f'  - {t[\"text\"]} (streak: {t.get(\"streak\",0)}){n}')
 print(f'\nCompleted today ({len(done)}):')
 for t in done: print(f'  - {t[\"text\"]}')
 "

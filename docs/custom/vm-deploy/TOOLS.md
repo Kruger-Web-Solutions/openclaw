@@ -245,6 +245,8 @@ todoist_tasks grocery "Avocados Checkers"
 
 **Use task names, not IDs. All scripts return names only — never raw IDs.**
 
+**Habitica dailies and todos include `notes` after a `—` separator.** The notes contain the actual detail (e.g. exercise lists, supplement names, scripture). When the user asks "what exercises today" or "what meds tonight", the answer is in the notes field of the relevant daily — **always call the tool and read the real notes**. Never make up content.
+
 ```
 sparky_fitness summary
 sparky_fitness diary
