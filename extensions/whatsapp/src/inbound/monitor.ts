@@ -53,7 +53,7 @@ export async function monitorWebInbox(options: {
   // closures, createWebSendApi, and access-control pairing replies) since they all
   // share this single socket instance. A fresh limiter is created each reconnect cycle.
   const rateLimiter = createOutboundRateLimiter(options.outboundRateLimit);
-  const _origSendMessage = sock.sendMessage.bind(sock);
+  const _origSendMessage = sock.sendMessage.bind(sock) as (...args: unknown[]) => Promise<unknown>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (sock as any).sendMessage = rateLimiter.wrapSendMessage(_origSendMessage);
   const connectedAtMs = Date.now();
