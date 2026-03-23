@@ -1,0 +1,116 @@
+#!/bin/bash
+# ~/bin/habitica — clean wrapper for the gateway exec fallback
+# Returns human-readable output with task names only — NO IDs
+# Actions: dashboard, dailies, habits, todos, complete <title>, create_todo <title>
+
+set -euo pipefail
+
+USER_ID="$HABITICA_USER_ID"
+API_KEY="$HABITICA_API_KEY"
+BASE="https://habitica.com/api/v3"
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+
+_get() { curl -sf -H "x-api-user: $USER_ID" -H "x-api-key: $API_KEY" -H "x-client: openclaw" "$BASE$1" -o "$TMP"; }
+_post() { curl -sf -X POST -H "x-api-user: $USER_ID" -H "x-api-key: $API_KEY" -H "x-client: openclaw" -H "Content-Type: application/json" ${2:+-d "$2"} "$BASE$1" -o "$TMP"; }
+
+ACTION="${1:-dashboard}"
+
+case "$ACTION" in
+
+  dashboard)
+    _get "/user?userFields=stats"
+    _get "/tasks/user" && TASKS_TMP="$TMP"
+    # Get stats separately
+    _get "/user?userFields=stats"
+    python3 -c "
+import json, sys
+stats = json.load(open('$TMP'))['data']['stats']
+print(f'HP: {round(stats[\"hp\"])}/{stats[\"maxHealth\"]} | MP: {round(stats[\"mp\"])} | Level: {stats[\"lvl\"]} | GP: {round(stats[\"gp\"],2)} | Streak: (see dailies)')
+"
+    _get "/tasks/user"
+    python3 -c "
+import json
+tasks = json.load(open('$TMP'))['data']
+dailies  = [t for t in tasks if t['type']=='daily'  and t.get('isDue') and not t.get('completed')]
+todos    = [t for t in tasks if t['type']=='todo'   and not t.get('completed')]
+habits   = [t for t in tasks if t['type']=='habit']
+print(f'\nOverdue dailies ({len(dailies)}):')
+for t in dailies: print(f'  - {t[\"text\"]}')
+print(f'\nIncomplete todos ({len(todos)}):')
+for t in todos: print(f'  - {t[\"text\"]}')
+print(f'\nHabits ({len(habits)}):')
+for t in habits: print(f'  - {t[\"text\"]}')
+"
+    ;;
+
+  dailies)
+    _get "/tasks/user?type=dailys"
+    python3 -c "
+import json
+tasks = json.load(open('$TMP'))['data']
+due = [t for t in tasks if t.get('isDue') and not t.get('completed')]
+done = [t for t in tasks if t.get('completed')]
+print(f'Dailies due ({len(due)}):')
+for t in due: print(f'  - {t[\"text\"]} (streak: {t.get(\"streak\",0)})')
+print(f'\nCompleted today ({len(done)}):')
+for t in done: print(f'  - {t[\"text\"]}')
+"
+    ;;
+
+  habits)
+    _get "/tasks/user?type=habits"
+    python3 -c "
+import json
+tasks = json.load(open('$TMP'))['data']
+print(f'Habits ({len(tasks)}):')
+for t in tasks: print(f'  - {t[\"text\"]}')
+"
+    ;;
+
+  todos)
+    _get "/tasks/user?type=todos"
+    python3 -c "
+import json
+tasks = json.load(open('$TMP'))['data']
+incomplete = [t for t in tasks if not t.get('completed')]
+print(f'Todos ({len(incomplete)} incomplete):')
+for i,t in enumerate(incomplete,1):
+    due = f' (due {t[\"date\"][:10]})' if t.get('date') else ''
+    print(f'  {i}. {t[\"text\"]}{due}')
+"
+    ;;
+
+  complete)
+    TITLE="${2:?task title required — e.g. habitica complete \"Morning Bible reading\"}"
+    # Look up task ID by name
+    _get "/tasks/user"
+    TASK_ID=$(python3 -c "
+import json, sys
+tasks = json.load(open('$TMP'))['data']
+frag = sys.argv[1].lower()
+# Search todos and dailies
+for t in tasks:
+    if t['type'] in ('todo','daily') and not t.get('completed') and frag in t['text'].lower():
+        print(t['id'])
+        break
+" "$TITLE")
+    if [ -z "$TASK_ID" ]; then
+      echo "No incomplete task found matching: $TITLE"
+      exit 1
+    fi
+    _post "/tasks/$TASK_ID/score/up"
+    echo "Completed: $TITLE"
+    ;;
+
+  create_todo)
+    TITLE="${2:?title required}"
+    _post "/tasks/user" "{\"type\":\"todo\",\"text\":$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$TITLE")}"
+    echo "Created todo: $TITLE"
+    ;;
+
+  *)
+    echo "Usage: habitica dashboard|dailies|habits|todos|complete <title>|create_todo <title>"
+    exit 1
+    ;;
+esac
