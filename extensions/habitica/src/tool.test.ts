@@ -5,10 +5,12 @@ vi.mock("./api.js", () => ({
   fetchTasks: vi.fn(),
   fetchUserStats: vi.fn(),
   scoreTask: vi.fn(),
+  createTask: vi.fn(),
+  scoreHabit: vi.fn(),
 }));
 
 import type { HabiticaAuth } from "./api.js";
-import { fetchDashboard, fetchTasks, fetchUserStats, scoreTask } from "./api.js";
+import { createTask, fetchDashboard, fetchTasks, fetchUserStats, scoreHabit, scoreTask } from "./api.js";
 import { createHabiticaTool } from "./tool.js";
 
 describe("habitica tool", () => {
@@ -42,6 +44,8 @@ describe("habitica tool", () => {
       class: "warrior",
     });
     vi.mocked(scoreTask).mockResolvedValue({ success: true });
+    vi.mocked(createTask).mockResolvedValue({ id: "new-task-id", text: "Test", type: "todo" } as never);
+    vi.mocked(scoreHabit).mockResolvedValue({ success: true });
   });
 
   afterEach(() => {
@@ -104,6 +108,65 @@ describe("habitica tool", () => {
   it("returns error for complete without task_id", async () => {
     const tool = createHabiticaTool(auth);
     await expect(tool.execute("call-7", { action: "complete" })).rejects.toThrow(
+      "task_id required",
+    );
+  });
+
+  it("handles create_todo action (todo type)", async () => {
+    const tool = createHabiticaTool(auth);
+    await tool.execute("call-ct-1", { action: "create_todo", title: "Fix the UI bug", task_type: "todo", priority: 2 });
+
+    expect(createTask).toHaveBeenCalledWith(auth, {
+      type: "todo",
+      text: "Fix the UI bug",
+      notes: undefined,
+      priority: 2,
+    });
+  });
+
+  it("handles create_todo action (daily type)", async () => {
+    const tool = createHabiticaTool(auth);
+    await tool.execute("call-ct-2", { action: "create_todo", title: "Morning walk", task_type: "daily" });
+
+    expect(createTask).toHaveBeenCalledWith(auth, {
+      type: "daily",
+      text: "Morning walk",
+      notes: undefined,
+      priority: undefined,
+    });
+  });
+
+  it("handles create_todo action defaults task_type to todo", async () => {
+    const tool = createHabiticaTool(auth);
+    await tool.execute("call-ct-3", { action: "create_todo", title: "Some task" });
+
+    expect(createTask).toHaveBeenCalledWith(auth, expect.objectContaining({ type: "todo" }));
+  });
+
+  it("returns error for create_todo without title", async () => {
+    const tool = createHabiticaTool(auth);
+    await expect(tool.execute("call-ct-4", { action: "create_todo" })).rejects.toThrow(
+      "title required",
+    );
+  });
+
+  it("handles score_habit action up", async () => {
+    const tool = createHabiticaTool(auth);
+    await tool.execute("call-sh-1", { action: "score_habit", task_id: "habit-abc", direction: "up" });
+
+    expect(scoreHabit).toHaveBeenCalledWith(auth, "habit-abc", "up");
+  });
+
+  it("handles score_habit action down", async () => {
+    const tool = createHabiticaTool(auth);
+    await tool.execute("call-sh-2", { action: "score_habit", task_id: "habit-abc", direction: "down" });
+
+    expect(scoreHabit).toHaveBeenCalledWith(auth, "habit-abc", "down");
+  });
+
+  it("returns error for score_habit without task_id", async () => {
+    const tool = createHabiticaTool(auth);
+    await expect(tool.execute("call-sh-3", { action: "score_habit" })).rejects.toThrow(
       "task_id required",
     );
   });

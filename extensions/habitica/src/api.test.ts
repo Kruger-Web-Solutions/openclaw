@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HabiticaAuth } from "./api.js";
-import { fetchDashboard, fetchTasks, fetchUserStats, scoreTask } from "./api.js";
+import { createTask, fetchDashboard, fetchTasks, fetchUserStats, scoreHabit, scoreTask } from "./api.js";
 
 describe("habitica api", () => {
   const auth: HabiticaAuth = { userId: "test-user", apiKey: "test-key" };
@@ -107,6 +107,62 @@ describe("habitica api", () => {
 
       expect(fetch).toHaveBeenCalledWith(
         "https://habitica.com/api/v3/tasks/task-123/score/up",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+  });
+
+  describe("createTask", () => {
+    it("posts to /tasks/user with correct body", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, data: { id: "new-id", text: "Test task", type: "todo" } }),
+      } as Response);
+
+      const task = await createTask(auth, { type: "todo", text: "Test task", notes: "some notes", priority: 2 });
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://habitica.com/api/v3/tasks/user",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ type: "todo", text: "Test task", notes: "some notes", priority: 2 }),
+        }),
+      );
+      expect(task.id).toBe("new-id");
+    });
+
+    it("creates a daily task", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, data: { id: "daily-1", text: "Morning walk", type: "daily" } }),
+      } as Response);
+
+      await createTask(auth, { type: "daily", text: "Morning walk" });
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://habitica.com/api/v3/tasks/user",
+        expect.objectContaining({
+          body: JSON.stringify({ type: "daily", text: "Morning walk" }),
+        }),
+      );
+    });
+  });
+
+  describe("scoreHabit", () => {
+    it("calls POST on /tasks/:id/score/up for positive score", async () => {
+      await scoreHabit(auth, "habit-123", "up");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://habitica.com/api/v3/tasks/habit-123/score/up",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+
+    it("calls POST on /tasks/:id/score/down for negative score", async () => {
+      await scoreHabit(auth, "habit-456", "down");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://habitica.com/api/v3/tasks/habit-456/score/down",
         expect.objectContaining({ method: "POST" }),
       );
     });

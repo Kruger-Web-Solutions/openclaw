@@ -69,6 +69,34 @@ export async function scoreTask(auth: HabiticaAuth, taskId: string): Promise<unk
   return result.data;
 }
 
+export async function createTask(
+  auth: HabiticaAuth,
+  task: {
+    type: "todo" | "habit" | "daily";
+    text: string;
+    notes?: string;
+    /** 0.1=trivial, 1=easy, 1.5=medium, 2=hard */
+    priority?: number;
+  },
+): Promise<HabiticaTask> {
+  const result = await habiticaFetch(auth, "/tasks/user", {
+    method: "POST",
+    body: JSON.stringify(task),
+  });
+  return result.data as HabiticaTask;
+}
+
+export async function scoreHabit(
+  auth: HabiticaAuth,
+  taskId: string,
+  direction: "up" | "down",
+): Promise<unknown> {
+  const result = await habiticaFetch(auth, `/tasks/${taskId}/score/${direction}`, {
+    method: "POST",
+  });
+  return result.data;
+}
+
 export async function fetchDashboard(auth: HabiticaAuth) {
   const [dailies, habits, todos, stats] = await Promise.all([
     fetchTasks(auth, "dailys"),

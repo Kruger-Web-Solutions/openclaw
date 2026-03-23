@@ -6,12 +6,13 @@
  *   .cursor/mcp.json command: "ssh"
  *   args: ["-i","~/.ssh/id_rsa","henzard@192.168.122.82","node ~/.openclaw/mcp-server.mjs"]
  *
- * Exposes 13 tools:
+ * Exposes 14 tools:
  *   WhatsApp       (6): whatsapp_status, whatsapp_contacts, whatsapp_send,
  *                       whatsapp_poll, whatsapp_react, whatsapp_archive
- *   Habitica       (1): habitica (dashboard/dailies/habits/todos/stats/complete)
+ *   Habitica       (1): habitica (dashboard/dailies/habits/todos/stats/complete/create_todo/score_habit)
  *   Todoist        (4): todoist_tasks, todoist_projects, todoist_labels, todoist_sections
  *   Cron           (1): cron (list/add/update/remove/run)
+ *   SparkyFitness  (1): sparky_fitness (diary/log_food/log_water/goals/weight/summary/sleep)
  *   Health         (1): gateway_health
  */
 
@@ -33,6 +34,8 @@ const ARCHIVE_DB                = `${HOME}/.openclaw/whatsapp/archive.sqlite`;
 const TODOIST_TOKEN_PATH        = `${HOME}/.openclaw/secrets/todoist-token`;
 const TODOIST_GROCERY_CFG_PATH  = `${HOME}/.openclaw/workspace/config/todoist-groceries.json`;
 const TODOIST_API               = "https://api.todoist.com/api/v1";
+const SPARKY_BASE               = "http://localhost:8080/api";
+const SPARKY_TOKEN_PATH         = `${HOME}/.openclaw/secrets/sparky-token`;
 
 /** Read gateway auth token from the openclaw config file. */
 function getToken() {
@@ -396,16 +399,36 @@ server.tool(
 // ── Habitica tool ─────────────────────────────────────────────────────────────
 server.tool(
   "habitica",
-  "Manage Habitica tasks and stats. Actions: dashboard, dailies, habits, todos, stats, complete.",
+  "Manage Habitica tasks and stats. Actions: dashboard, dailies, habits, todos, stats, complete, create_todo (also creates dailies/habits — set task_type), score_habit.",
   {
-    action:  z.enum(["dashboard", "dailies", "habits", "todos", "stats", "complete"]).describe("Action to perform."),
-    task_id: z.string().optional().describe("Task ID (required for action=complete)."),
+    action:    z.enum(["dashboard", "dailies", "habits", "todos", "stats", "complete", "create_todo", "score_habit"])
+                .describe("Action to perform."),
+    task_id:   z.string().optional().describe("Task ID (required for complete and score_habit)."),
+    title:     z.string().optional().describe("Task title — required for create_todo."),
+    task_type: z.enum(["todo", "habit", "daily"]).optional().describe("Type of task to create (default: todo)."),
+    notes:     z.string().optional().describe("Optional notes for the new task."),
+    priority:  z.number().optional().describe("Task priority: 0.1=trivial, 1=easy, 1.5=medium, 2=hard."),
+    direction: z.enum(["up", "down"]).optional().describe("Habit score direction — up=positive, down=negative."),
   },
-  async ({ action, task_id }) => {
+  async ({ action, task_id, title, task_type, notes, priority, direction }) => {
     if (action === "complete" && !task_id) {
       return { content: [{ type: "text", text: "task_id is required for action=complete." }], isError: true };
     }
-    return toContent(await invokeGatewayTool("habitica", { action, ...(task_id ? { task_id } : {}) }));
+    if (action === "create_todo" && !title) {
+      return { content: [{ type: "text", text: "title is required for action=create_todo." }], isError: true };
+    }
+    if (action === "score_habit" && !task_id) {
+      return { content: [{ type: "text", text: "task_id is required for action=score_habit." }], isError: true };
+    }
+    return toContent(await invokeGatewayTool("habitica", {
+      action,
+      ...(task_id   ? { task_id }   : {}),
+      ...(title     ? { title }     : {}),
+      ...(task_type ? { task_type } : {}),
+      ...(notes     ? { notes }     : {}),
+      ...(priority  !== undefined ? { priority } : {}),
+      ...(direction ? { direction } : {}),
+    }));
   },
 );
 
@@ -866,6 +889,123 @@ server.tool(
       content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       ...(res.ok ? {} : { isError: true }),
     };
+  },
+);
+
+// ── SparkyFitness helpers ─────────────────────────────────────────────────────
+
+function getSparkyToken() {
+  try {
+    return readFileSync(SPARKY_TOKEN_PATH, "utf8").trim();
+  } catch {
+    return null;
+  }
+}
+
+async function sparkyRequest(method, path, body) {
+  const token = getSparkyToken();
+  if (!token) {
+    return { ok: false, error: `No SparkyFitness token found at ${SPARKY_TOKEN_PATH}. Generate one in SparkyFitness Settings → API.` };
+  }
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+  try {
+    const res = await fetchWithTimeout(
+      `${SPARKY_BASE}${path}`,
+      { method, headers, ...(body ? { body: JSON.stringify(body) } : {}) },
+      15_000,
+    );
+    const text = await res.text();
+    if (!res.ok) {
+      return { ok: false, error: `SparkyFitness API ${res.status}: ${text}` };
+    }
+    try {
+      return { ok: true, data: text ? JSON.parse(text) : { ok: true } };
+    } catch {
+      return { ok: true, raw: text };
+    }
+  } catch (err) {
+    return { ok: false, error: `SparkyFitness request failed: ${err.message}` };
+  }
+}
+
+// ── sparky_fitness tool ────────────────────────────────────────────────────────
+
+server.tool(
+  "sparky_fitness",
+  [
+    "Log food, water, and weight; read macro totals and goals via the self-hosted SparkyFitness instance.",
+    "Food diary and hydration are synced from WhatsApp logs. Sleep data comes from Samsung Health via Google Health Connect.",
+  ].join(" "),
+  {
+    action: z.enum(["diary", "log_food", "log_water", "goals", "weight", "summary", "sleep"])
+              .describe('"diary" = full food log for a day; "log_food" = add food entry; "log_water" = log water intake (ml); "goals" = macro targets; "weight" = log or read weight; "summary" = today\'s macro progress; "sleep" = read sleep data.'),
+    date:   z.string().optional().describe("YYYY-MM-DD (defaults to today)."),
+    // log_food params
+    food:   z.string().optional().describe("Food name or saved meal name — required for log_food."),
+    meal:   z.enum(["breakfast", "lunch", "dinner", "snack"]).optional().describe("Meal slot — required for log_food."),
+    amount: z.number().optional().describe("Amount in grams (food) or ml (water)."),
+    calories: z.number().optional().describe("Override calories (kcal) when food is not in DB."),
+    protein:  z.number().optional().describe("Override protein (g)."),
+    carbs:    z.number().optional().describe("Override carbs (g)."),
+    fat:      z.number().optional().describe("Override fat (g)."),
+    // weight params
+    weight_kg: z.number().optional().describe("Body weight in kg — required for action=weight to log a new entry."),
+  },
+  async ({ action, date, food, meal, amount, calories, protein, carbs, fat, weight_kg }) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const d = date ?? today;
+
+    if (action === "diary") {
+      return toContent(await sparkyRequest("GET", `/diary?date=${d}`));
+    }
+
+    if (action === "summary") {
+      // Fetch both diary and goals then compute progress
+      const [diary, goals] = await Promise.all([
+        sparkyRequest("GET", `/diary?date=${d}`),
+        sparkyRequest("GET", "/goals"),
+      ]);
+      if (!diary.ok) return toContent(diary);
+      if (!goals.ok) return toContent(goals);
+      return toContent({ ok: true, data: { date: d, diary: diary.data, goals: goals.data } });
+    }
+
+    if (action === "goals") {
+      return toContent(await sparkyRequest("GET", "/goals"));
+    }
+
+    if (action === "log_food") {
+      if (!food) return { content: [{ type: "text", text: "food is required for action=log_food." }], isError: true };
+      if (!meal) return { content: [{ type: "text", text: "meal is required for action=log_food." }], isError: true };
+      const body = { food_name: food, meal_type: meal, date: d };
+      if (amount   !== undefined) body.amount_g   = amount;
+      if (calories !== undefined) body.calories   = calories;
+      if (protein  !== undefined) body.protein_g  = protein;
+      if (carbs    !== undefined) body.carbs_g    = carbs;
+      if (fat      !== undefined) body.fat_g      = fat;
+      return toContent(await sparkyRequest("POST", "/diary", body));
+    }
+
+    if (action === "log_water") {
+      const ml = amount ?? 1200;
+      return toContent(await sparkyRequest("POST", "/water", { date: d, amount_ml: ml }));
+    }
+
+    if (action === "weight") {
+      if (weight_kg !== undefined) {
+        return toContent(await sparkyRequest("POST", "/weight", { date: d, weight_kg }));
+      }
+      return toContent(await sparkyRequest("GET", `/weight?date=${d}`));
+    }
+
+    if (action === "sleep") {
+      return toContent(await sparkyRequest("GET", `/sleep?date=${d}`));
+    }
+
+    return { content: [{ type: "text", text: `Unknown sparky_fitness action: ${action}` }], isError: true };
   },
 );
 
