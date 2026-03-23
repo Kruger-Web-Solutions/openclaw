@@ -10,7 +10,8 @@ This folder contains the complete knowledge base for this OpenClaw fork. Every d
 |---|---|---|
 | **[implementation-guide.md](implementation-guide.md)** | Full story: every feature built, every bug, all lessons learned | You are new to this fork or starting a new development session |
 | **[ssh-and-vm-operations.md](ssh-and-vm-operations.md)** | SSH setup, PowerShell gotchas, sudo, gateway ops, diagnostics, model switching | Something on the VM isn't working, or you need to deploy |
-| **[mcp-implementation-guide.md](mcp-implementation-guide.md)** | Deep-dive on the MCP server (13 tools, transport decisions, Todoist integration) | You are adding or debugging MCP tools |
+| **[mcp-implementation-guide.md](mcp-implementation-guide.md)** | Deep-dive on the MCP server (14 tools, transport decisions, Todoist + SparkyFitness integration) | You are adding or debugging MCP tools |
+| **[vm-deploy/](vm-deploy/)** | Ready-to-run deploy scripts: TOOLS.md, calendar-2026.json, cron setup, SparkyFitness, full orchestration | You are deploying the personal assistant system to the VM |
 
 ---
 
