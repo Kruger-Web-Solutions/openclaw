@@ -11,13 +11,13 @@ const HabiticaToolSchema = Type.Object(
       type: "string",
       enum: ["dashboard", "dailies", "habits", "todos", "stats", "complete", "create_todo", "score_habit"],
       description:
-        "Action to perform: 'dashboard' for full overview, 'dailies'/'habits'/'todos' for specific lists, 'stats' for user stats, 'complete' to mark a task done, 'create_todo' to create a new task (todo/daily/habit), 'score_habit' to score a habit up or down.",
+        "Action to perform: 'dashboard' for full overview, 'dailies'/'habits'/'todos' for specific lists, 'stats' for user stats, 'complete' to mark a task done by title (preferred) or task_id, 'create_todo' to create a new task (todo/daily/habit), 'score_habit' to score a habit up or down.",
     }),
     task_id: Type.Optional(
-      Type.String({ description: "Task ID (required for 'complete' and 'score_habit' actions)" }),
+      Type.String({ description: "Task ID — only needed for 'complete'/'score_habit' when you already have the ID. Prefer 'title' for 'complete' instead." }),
     ),
     title: Type.Optional(
-      Type.String({ description: "Task title/text — required for 'create_todo'" }),
+      Type.String({ description: "Task name/title — required for 'create_todo'; also accepted by 'complete' to find and complete a task by name (case-insensitive substring match)." }),
     ),
     task_type: Type.Optional(
       Type.Unsafe<"todo" | "habit" | "daily">({
@@ -82,9 +82,9 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
         return jsonResult({
           total: tasks.length,
           overdue: overdue.length,
+          // id intentionally omitted — use title to complete tasks
           dailies: tasks.map((t) => ({
-            id: t.id,
-            text: t.text,
+            name: t.text,
             completed: t.completed,
             isDue: t.isDue,
             streak: t.streak,
@@ -96,9 +96,9 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
         const tasks = await fetchTasks(auth, "habits");
         return jsonResult({
           total: tasks.length,
+          // id intentionally omitted — use title to score habits
           habits: tasks.map((t) => ({
-            id: t.id,
-            text: t.text,
+            name: t.text,
             value: t.value,
           })),
         });
@@ -110,11 +110,11 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
         return jsonResult({
           total: tasks.length,
           incomplete: incomplete.length,
+          // id intentionally omitted — use title to complete tasks
           todos: incomplete.map((t) => ({
-            id: t.id,
-            text: t.text,
+            name: t.text,
             priority: t.priority,
-            date: t.date,
+            due: t.date || undefined,
             notes: t.notes || undefined,
           })),
         });
@@ -133,12 +133,29 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
       }
 
       if (action === "complete") {
-        const taskId = readStringParam(rawParams, "task_id", { required: true });
+        let taskId = readStringParam(rawParams, "task_id");
+        const titleParam = readStringParam(rawParams, "title");
+
+        // If no task_id but title given, look up the task by name (case-insensitive substring)
+        if (!taskId && titleParam) {
+          const allTasks = [
+            ...(await fetchTasks(auth, "todos")),
+            ...(await fetchTasks(auth, "dailys")),
+          ];
+          const match = allTasks.find(
+            (t) => !t.completed && t.text.toLowerCase().includes(titleParam.toLowerCase()),
+          );
+          if (!match) {
+            return jsonResult({ error: `No incomplete task found matching: "${titleParam}"` });
+          }
+          taskId = match.id;
+        }
+
         if (!taskId) {
-          return jsonResult({ error: "task_id is required for the 'complete' action" });
+          return jsonResult({ error: "Provide 'title' (task name) or 'task_id' for the complete action." });
         }
         const result = await scoreTask(auth, taskId);
-        return jsonResult({ success: true, taskId, result });
+        return jsonResult({ success: true, result });
       }
 
       if (action === "create_todo") {
@@ -154,13 +171,24 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
       }
 
       if (action === "score_habit") {
-        const taskId = readStringParam(rawParams, "task_id", { required: true });
+        let taskId = readStringParam(rawParams, "task_id");
+        const titleParam = readStringParam(rawParams, "title");
+
+        if (!taskId && titleParam) {
+          const habits = await fetchTasks(auth, "habits");
+          const match = habits.find((t) => t.text.toLowerCase().includes(titleParam.toLowerCase()));
+          if (!match) {
+            return jsonResult({ error: `No habit found matching: "${titleParam}"` });
+          }
+          taskId = match.id;
+        }
+
         if (!taskId) {
-          return jsonResult({ error: "task_id is required for the 'score_habit' action" });
+          return jsonResult({ error: "Provide 'title' (habit name) or 'task_id' for the score_habit action." });
         }
         const direction = (readStringParam(rawParams, "direction") ?? "up") as "up" | "down";
         const result = await scoreHabit(auth, taskId, direction);
-        return jsonResult({ success: true, taskId, direction, result });
+        return jsonResult({ success: true, direction, result });
       }
 
       return jsonResult({ error: `Unknown action: ${action}` });
