@@ -21,6 +21,7 @@
 9. [Lessons learned](#9-lessons-learned)
 10. [How to add a new tool](#10-how-to-add-a-new-tool)
 11. [File map](#11-file-map)
+12. [SparkyFitness tool — complete reference](#12-sparkyFitness-tool--complete-reference)
 
 ---
 
@@ -778,10 +779,84 @@ docs/custom/
 
 On VM only (not in repo):
   ~/.openclaw/secrets/todoist-token
+  ~/.openclaw/secrets/sparky-token
   ~/.openclaw/workspace/config/todoist-groceries.json
   ~/openclaw-custom/              Clone of the repo on the VM
+  ~/sparky/                       SparkyFitness Docker Compose
 ```
 
 ---
 
-*Last updated: March 2026. Covers the full implementation from initial plan through Todoist CRUD expansion.*
+## 12. SparkyFitness tool — complete reference
+
+This section is a supplement to the Phase 2 deployment record in `implementation-guide.md §16–20`. It focuses specifically on the MCP tool implementation.
+
+### Tool name: `sparky_fitness`
+
+**Important:** This tool is only accessible via the Cursor MCP connection. The OpenClaw gateway agent (WhatsApp) does NOT have access to it — the gateway uses its own plugin registry. To expose SparkyFitness to the WhatsApp agent, build a proper `extensions/sparkyfitness` OpenClaw plugin.
+
+### Auth
+
+```javascript
+const SPARKY_TOKEN_PATH = `${HOME}/.openclaw/secrets/sparky-token`;
+// Header: "x-api-key": token   (NOT Authorization: Bearer)
+```
+
+The SparkyFitness middleware maps `Authorization: Bearer <token>` to `x-api-key` automatically for 64+ alphanumeric tokens, but `x-api-key` direct is more reliable.
+
+### Actions and correct endpoints
+
+```javascript
+// diary: read food entries
+GET /api/food-entries?selectedDate=YYYY-MM-DD        // NOT /diary?date=
+
+// summary: dashboard + goals combined
+GET /api/dashboard/stats?date=YYYY-MM-DD             // returns {eaten, goal, burned, remaining}
+GET /api/goals/by-date/YYYY-MM-DD                    // returns {calories, protein, carbs, fat, water_goal_ml, ...}
+
+// goals: just nutrition goals
+GET /api/goals/by-date/YYYY-MM-DD
+
+// log_food: 2-step — create food THEN create entry
+POST /api/foods     body: {name, is_custom:true, serving_size, serving_unit, calories, protein, carbs, fat}
+POST /api/food-entries  body: {food_id, variant_id, entry_date, meal_type, quantity, unit}
+
+// log_water: container-based (+250ml per drink)
+POST /api/measurements/water-intake  body: {entry_date, change_drinks, container_id:null}
+
+// weight (GET)
+GET /api/measurements/check-in/YYYY-MM-DD
+
+// weight (POST)
+POST /api/measurements/check-in  body: {entry_date, weight}  // weight in kg
+
+// sleep
+GET /api/sleep?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD  // both required
+```
+
+### Meal type normalization
+
+```javascript
+const mealTypeMap = {
+  breakfast: "breakfast",
+  lunch: "lunch",
+  dinner: "dinner",
+  snack: "snacks",   // ← must be plural
+  snacks: "snacks",
+};
+```
+
+### Food creation: flat body
+
+The `NormalizedFoodSchema` TypeScript type uses `default_variant` nesting. The actual `POST /api/foods` endpoint uses a **flat** body. Sending nested `default_variant` causes a null constraint violation on the `food_variants.serving_size` column.
+
+### Water undo pattern
+
+```javascript
+// Undo 1 drink:
+POST /api/measurements/water-intake  body: {entry_date, change_drinks: -1, container_id: null}
+```
+
+---
+
+*Last updated: March 2026. Covers the full implementation from initial plan through Todoist CRUD expansion, SparkyFitness integration, and route corrections.*

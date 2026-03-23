@@ -8,10 +8,10 @@ This folder contains the complete knowledge base for this OpenClaw fork. Every d
 
 | File | What it covers | Read first if... |
 |---|---|---|
-| **[implementation-guide.md](implementation-guide.md)** | Full story: every feature built, every bug, all lessons learned | You are new to this fork or starting a new development session |
+| **[implementation-guide.md](implementation-guide.md)** | Full story: every feature built, every bug, all lessons learned (Phase 1 + Phase 2) | You are new to this fork or starting a new development session |
 | **[ssh-and-vm-operations.md](ssh-and-vm-operations.md)** | SSH setup, PowerShell gotchas, sudo, gateway ops, diagnostics, model switching | Something on the VM isn't working, or you need to deploy |
 | **[mcp-implementation-guide.md](mcp-implementation-guide.md)** | Deep-dive on the MCP server (14 tools, transport decisions, Todoist + SparkyFitness integration) | You are adding or debugging MCP tools |
-| **[vm-deploy/](vm-deploy/)** | Ready-to-run deploy scripts: TOOLS.md, calendar-2026.json, cron setup, SparkyFitness, full orchestration | You are deploying the personal assistant system to the VM |
+| **[vm-deploy/](vm-deploy/)** | Ready-to-run deploy scripts: TOOLS.md, calendar-2026.json, cron setup, SparkyFitness, E2E tests, full orchestration | You are deploying the personal assistant system to the VM |
 
 ---
 
@@ -49,3 +49,17 @@ This folder contains the complete knowledge base for this OpenClaw fork. Every d
 **Add a new MCP tool →** [mcp-implementation-guide.md §10](mcp-implementation-guide.md#10-how-to-add-a-new-tool)
 
 **Why does the MCP server run on the VM, not locally? →** [mcp-implementation-guide.md §2](mcp-implementation-guide.md#why-the-server-runs-on-the-vm-not-locally)
+
+**SparkyFitness returns 404 / wrong route →** [implementation-guide.md §16](implementation-guide.md#16-feature-6-sparkyFitness-self-hosted-nutrition-tracker) + [mcp-implementation-guide.md §12](mcp-implementation-guide.md#12-sparkyFitness-tool--complete-reference)
+
+**SparkyFitness "Invalid meal type: snack" →** [implementation-guide.md §20 B-SF5](implementation-guide.md#20-phase-2-bugs-and-fixes) — use `snacks` (plural)
+
+**SparkyFitness food entry fails (serving_size null) →** [implementation-guide.md §20 B-SF4](implementation-guide.md#20-phase-2-bugs-and-fixes) — use flat payload, not nested `default_variant`
+
+**SparkyFitness "Authentication required" with correct token →** [implementation-guide.md §20 B-SF3](implementation-guide.md#20-phase-2-bugs-and-fixes) — use `x-api-key` header not `Authorization: Bearer`
+
+**`openclaw cron add` "required option --name not specified" →** [implementation-guide.md §20 B-CRON1](implementation-guide.md#20-phase-2-bugs-and-fixes) — use named flags, not `--job`
+
+**How to verify the full system is working →** [implementation-guide.md §22](implementation-guide.md#22-e2e-test-harness) — run `e2e-test.sh`
+
+**`sparky_fitness` not available to WhatsApp agent →** [implementation-guide.md §21](implementation-guide.md#21-phase-2-lessons-learned) — it's Cursor MCP only; build an extension for gateway access

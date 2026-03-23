@@ -24,6 +24,17 @@
 14. [How to add a new feature](#14-how-to-add-a-new-feature)
 15. [File map](#15-file-map)
 
+**Phase 2 — Personal assistant deployment (March 2026)**
+
+16. [Feature 6: SparkyFitness self-hosted nutrition tracker](#16-feature-6-sparkyFitness-self-hosted-nutrition-tracker)
+17. [Feature 7: Personal assistant cron system (52 jobs)](#17-feature-7-personal-assistant-cron-system)
+18. [Feature 8: Todoist project structure + in-progress sync](#18-feature-8-todoist-project-structure)
+19. [Phase 2 deployment journal](#19-phase-2-deployment-journal)
+20. [Phase 2 bugs and fixes](#20-phase-2-bugs-and-fixes)
+21. [Phase 2 lessons learned](#21-phase-2-lessons-learned)
+22. [E2E test harness](#22-e2e-test-harness)
+23. [Updated file map](#23-updated-file-map)
+
 **Companion documents** (also in `docs/custom/`):
 - [ssh-and-vm-operations.md](ssh-and-vm-operations.md) — Full SSH reference, PowerShell gotchas, `sudo` without password, gateway ops, diagnostics, model switching
 - [mcp-implementation-guide.md](mcp-implementation-guide.md) — Deep-dive on the MCP server specifically
@@ -38,10 +49,12 @@ This fork adds to the upstream [openclaw/openclaw](https://github.com/openclaw/o
 |---|---|---|
 | **WhatsApp archive** | Captures every inbound/outbound WhatsApp message to SQLite | Live |
 | **faster-whisper** | Transcribes WhatsApp voice notes locally using the `large-v3` model | Live |
-| **Habitica plugin** | Native agent tool for Habitica tasks/dailies/dashboard | Live |
+| **Habitica plugin** | Native agent tool for Habitica tasks/dailies/dashboard, `create_todo`, `score_habit` | Live |
 | **WhatsApp rate limiter** | Sliding-window outbound send limiter protecting all send paths | Live |
 | **MCP server** | stdio MCP server giving Cursor 14 tools over SSH to a running OpenClaw instance | Live |
-| **SparkyFitness** | Self-hosted nutrition + health tracker with MCP tool for macro logging, hydration, weight, sleep | Live |
+| **SparkyFitness** | Self-hosted nutrition + health tracker; Docker on VM; MCP tool for macro/water/weight/sleep | Live |
+| **Personal assistant system** | 52 cron jobs covering daily schedule, health, sacred calendar, birthdays, accountability, weekend | Live |
+| **Todoist project structure** | 5 projects + `in-progress` label for VIP task cross-sync with Habitica | Live |
 
 **Remotes:**
 - `origin` — `https://github.com/henzard/openclaw.git`
@@ -1054,4 +1067,570 @@ changelog/fragments/
 
 ---
 
-*Last updated: March 2026. Covers the full implementation: WhatsApp archive, faster-whisper, Habitica plugin, rate limiter, MCP server, production deployment, agent alignment, and upstream merge.*
+*Last updated: March 2026. Covers the full implementation: WhatsApp archive, faster-whisper, Habitica plugin, rate limiter, MCP server, production deployment, agent alignment, upstream merge, SparkyFitness, personal assistant cron system, Todoist structure, and full E2E verification.*
+
+---
+
+---
+
+# Phase 2 — Personal assistant deployment (March 2026)
+
+> This phase transformed the OpenClaw gateway from a developer tool into a fully automated personal assistant, health coach, and life accountability system. Everything below is a verbatim record of what was built, every failure encountered, every fix applied, and every decision made.
+
+---
+
+## 16. Feature 6: SparkyFitness self-hosted nutrition tracker
+
+### What it is
+
+[SparkyFitness](https://github.com/CodeWithCJ/SparkyFitness) is a self-hosted, privacy-first nutrition and health tracker. It replaces MyFitnessPal (no third-party data sharing, no account required). It runs entirely on the VM via Docker Compose and exposes a REST API on port 3004.
+
+### Why self-hosted
+
+The original plan used MyFitnessPal via its unofficial API. That was replaced because:
+- MFP's unofficial API is fragile and frequently breaks
+- Privacy: macro/weight data is sensitive
+- SparkyFitness runs on the same VM, so API calls are localhost — zero latency, no auth complexity beyond an API key
+
+### Architecture
+
+```
+VM: Docker Compose
+  ├── sparkyfitness-server   (Node.js Express, port 3004 via Nginx)
+  ├── sparkyfitness-db       (postgres:16-alpine, port 5432)
+  └── nginx                  (reverse proxy, exposes 3004)
+
+~/.openclaw/secrets/sparky-token   ← API key (x-api-key header)
+```
+
+### Deployment
+
+Docker Compose source is `~/sparky/`. The override file `~/sparky/docker-compose.override.yml` pins the DB to postgres:16-alpine (see B-SF2 below).
+
+```bash
+cd ~/sparky
+docker compose up -d
+docker ps   # verify sparkyfitness-server + db + nginx are Up
+```
+
+Web UI: `http://192.168.122.82:3004/login` — register your account here first, then generate an API key under Settings → API.
+
+### API key storage
+
+```bash
+echo "YOUR_KEY" > ~/.openclaw/secrets/sparky-token
+chmod 600 ~/.openclaw/secrets/sparky-token
+```
+
+The MCP server reads this file at call time via `getSparkyToken()`. If the file doesn't exist, the tool returns a helpful error message rather than crashing at startup.
+
+### Correct SparkyFitness API routes (hard-won)
+
+The SparkyFitness API routes are **not** what the TypeScript `NormalizedFoodSchema` implies. The schema is for search responses; the actual endpoint structure is:
+
+| Action | Method | Endpoint | Key params |
+|---|---|---|---|
+| Read food diary | GET | `/api/food-entries?selectedDate=YYYY-MM-DD` | `selectedDate` (not `date`) |
+| Read goals | GET | `/api/goals/by-date/YYYY-MM-DD` | date in path |
+| Dashboard summary | GET | `/api/dashboard/stats?date=YYYY-MM-DD` | returns `eaten`, `goal`, `burned` |
+| Read sleep | GET | `/api/sleep?startDate=...&endDate=...` | both dates required |
+| Read weight/check-in | GET | `/api/measurements/check-in/YYYY-MM-DD` | date in path |
+| Log water | POST | `/api/measurements/water-intake` | `{entry_date, change_drinks, container_id}` |
+| Log weight | POST | `/api/measurements/check-in` | `{entry_date, weight}` (kg) |
+| Create food | POST | `/api/foods` | **flat** structure (not nested `default_variant`) |
+| Create food entry | POST | `/api/food-entries` | `{food_id, variant_id, entry_date, meal_type, quantity, unit}` |
+| Delete food entry | DELETE | `/api/food-entries/:id` | |
+| Delete food | DELETE | `/api/foods/:id` | |
+
+**Auth header:** `x-api-key: YOUR_TOKEN` (not `Authorization: Bearer`). The middleware auto-maps Bearer to x-api-key if the token looks like an API key (≥64 alphanumeric chars), but using `x-api-key` directly is safer.
+
+**Meal types:** The valid values are `breakfast`, `lunch`, `dinner`, `snacks` (plural). Passing `"snack"` gives "Invalid meal type" error.
+
+**Food creation (flat, not nested):**
+```json
+{
+  "name": "Chicken Breast",
+  "is_custom": true,
+  "serving_size": 100,
+  "serving_unit": "g",
+  "calories": 165,
+  "protein": 31,
+  "carbs": 0,
+  "fat": 3.6
+}
+```
+Response includes `id` and `default_variant.id`. Both are needed for the food entry.
+
+**Food entry creation:**
+```json
+{
+  "food_id": "<food.id>",
+  "variant_id": "<food.default_variant.id>",
+  "entry_date": "2026-03-23",
+  "meal_type": "snacks",
+  "quantity": 100,
+  "unit": "g"
+}
+```
+
+**Water logging:** Water is container-based. `change_drinks: 1` adds 1 serving of the default container (~250ml). `change_drinks: -1` removes one. The response includes the new running total as `water_ml`.
+
+### Water containers
+
+The user's default container has `volume: 2000ml` with `servings_per_container: 8` (250ml each). `container_id: null` uses the default. The MCP tool converts `amount` (ml) to drinks: `Math.round(amount / 250) || 1`.
+
+### MCP tool (`sparky_fitness`)
+
+The tool is in `tools/openclaw-mcp-server.mjs`. It is a **Cursor MCP tool only** — it is NOT a gateway plugin. The gateway agent (WhatsApp) cannot call it unless a proper OpenClaw extension is built (see §21 notes).
+
+Actions: `diary`, `summary`, `goals`, `log_food`, `log_water`, `weight`, `sleep`.
+
+---
+
+## 17. Feature 7: Personal assistant cron system
+
+### Overview
+
+52 cron jobs covering the user's full daily life. These run inside the OpenClaw gateway via `openclaw cron add`. Each cron fires an agent prompt with `--announce` (WhatsApp delivery) and an optional `--channel whatsapp --to "+27711304241"` for accountability partner messages.
+
+### Cron categories
+
+| Category | Count | Examples |
+|---|---|---|
+| Weekday morning | 5 | morning-anchor (5am), daily-briefing (6:30am), post-rhyno-call, water-bottle-1 |
+| Weekday work | 6 | Nedbank standups, Weighsoft work block, NFPE/NDM standups |
+| Weekday afternoon | 6 | water checks, brunch reminder, macro/mood check, day-reflection, family-time |
+| Weekday evening | 6 | dinner-water, accountability-audit, exercise-reminder, kealyn-bedtime, evening-meds, sleep-prep |
+| Weekend | 4 | saturday-anchor, saturday-shopping, sunday-meal-prep, state-of-me-report (Sunday 8pm) |
+| Weekly specials | 3 | nagmal (Friday 6pm), friday-week-close, weekly-intentions-monday |
+| Sacred calendar | 14 | Seven Feasts of Israel 2026 with 7-day advance notices + eves |
+| Family birthdays | 6 | Alicia 12 June (14-day, 7-day, eve, day), Kealyn 1 August (14-day, 7-day, day) |
+| Pre-existing | 7 | Memory Synthesis (every 4h), Daily WhatsApp Summary, Weighsoft daily 8am, Step Tracker, PathCare, Email Reminders |
+
+**Total: 52 active crons**
+
+### Correct `openclaw cron add` syntax
+
+The CLI uses **named flags**, not a `--job` JSON blob:
+
+```bash
+openclaw cron add \
+  --name "morning-anchor" \
+  --cron "0 5 * * 1-5" \
+  --timezone "Africa/Johannesburg" \
+  --message "Good morning Henzard. It is 5am. Time for Bible reading..." \
+  --announce \
+  --channel whatsapp \
+  --to "+27711304241"
+```
+
+`--announce` sends the result to WhatsApp. `--channel` + `--to` are only needed when sending to a different recipient (e.g., accountability partners).
+
+The script is at `docs/custom/vm-deploy/phase7-crons-v2.sh`.
+
+### Accountability partners
+
+If Henzard has 3+ Habitica dailies incomplete by 6pm AND hasn't responded to 3 consecutive cron messages → the `accountability-audit` cron sends WhatsApp messages to both Alicia (+27...) and Rhyno (+27...).
+
+### Sacred calendar cron pattern
+
+Each feast has a 7-day advance notice cron AND an eve cron AND a day-of cron. The cron prompts include the scripture reference (Leviticus 23) and the biblical meaning only — no tradition, no rabbinic addition.
+
+---
+
+## 18. Feature 8: Todoist project structure
+
+### Projects created
+
+| Project | ID | Purpose |
+|---|---|---|
+| Shopping | `6CrfjhGM476WQJX7` | Pre-existing: grocery and shopping backlog |
+| Weighsoft | `6CrfjhGM4V85H3wj` | Pre-existing: Weighsoft client work tasks |
+| Nedbank | `6CrfjhGM4HhFMc3h` | Pre-existing: Nedbank tasks |
+| Home | `6gF6W9VPrmQJF8Q8` | New: personal and family tasks |
+| Books to Read | `6gF6W9fw2w7MvfjJ` | New: reading backlog |
+
+### Labels created
+
+| Label | ID | Purpose |
+|---|---|---|
+| `in-progress` | `2183350196` | VIP cross-system sync: tasks with this label are also synced to Habitica todos |
+
+### VIP sync routing rule
+
+When the agent receives "in progress: X" or "starting X" via WhatsApp:
+1. Create Todoist task with `in-progress` label
+2. Create Habitica todo (VIP sync)
+
+When "done with X":
+1. Complete Habitica todo
+2. Close Todoist task
+
+---
+
+## 19. Phase 2 deployment journal
+
+This section records what was actually done in order. Use this to understand state and reproduce the deployment.
+
+### Step 1 — Fix monitor.ts TypeScript error (pre-requisite for build)
+
+`extensions/whatsapp/src/inbound/monitor.ts` had a TS2345 error where `sock.sendMessage.bind(sock)` was passed to `rateLimiter.wrapSendMessage` whose parameter type was `(...args: unknown[]) => Promise<unknown>`. The specific sendMessage type was incompatible with this generic constraint.
+
+**Fix:** Explicit cast before passing:
+```typescript
+const _origSendMessage = sock.sendMessage.bind(sock) as (...args: unknown[]) => Promise<unknown>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(sock as any).sendMessage = rateLimiter.wrapSendMessage(_origSendMessage);
+```
+
+### Step 2 — Habitica plugin: add create_todo and score_habit actions
+
+Extended `extensions/habitica/src/tool.ts` with two new actions:
+- `create_todo` — creates a Habitica todo from the agent (VIP sync from WhatsApp)
+- `score_habit` — increments or decrements a habit by ID
+
+Both use the existing `habiticaFetch` helper in `src/api.ts`.
+
+### Step 3 — SparkyFitness MCP tool (first version)
+
+Added `sparky_fitness` tool to `tools/openclaw-mcp-server.mjs`. Initial version used wrong routes (see B-SF1 below). After API discovery on the live VM, all routes were corrected (see §16 for the correct table).
+
+Key discovery process:
+1. Found the actual route files by running `docker exec sparkyfitness-server ls /app/SparkyFitnessServer/routes/`
+2. Read `SparkyFitnessServer.js` for all `app.use()` route registrations
+3. Tested each endpoint with curl from the VM using the `x-api-key` header
+4. Read the TypeScript schema files inside the container to understand required fields
+
+### Step 4 — Docker install and SparkyFitness deployment
+
+Ubuntu 20.04 (focal) is EOL. The Docker install script warned about this and failed on `docker-model-plugin`. Fix: install without that package:
+
+```bash
+sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-buildx-plugin
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+# Re-login or run: newgrp docker
+```
+
+SparkyFitness docker-compose: `~/sparky/docker-compose.prod.yml` (in `docker/` subdir of the repo — not root).
+
+PostgreSQL 18+ issue: the stock docker-compose uses the latest postgres image which was 18+. It conflicts with the volume mount path (`/var/lib/postgresql/data` vs `/var/lib/postgresql/18/data`). Solution: pin to `postgres:16-alpine` via a docker-compose override file.
+
+```yaml
+# ~/sparky/docker-compose.override.yml
+services:
+  sparkyfitness-db:
+    image: postgres:16-alpine
+```
+
+After creating the override: `docker compose down && docker volume prune` (remove stale volumes) + `rm -rf ~/sparky/postgresql ~/sparky/backup ~/sparky/uploads` then `docker compose up -d`.
+
+### Step 5 — Passwordless sudo (deployment-only, reverted)
+
+To streamline automated deployment scripts, temporarily enabled passwordless sudo:
+```bash
+echo 'henzard ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/henzard-nopasswd
+sudo chmod 440 /etc/sudoers.d/henzard-nopasswd
+```
+**This was removed at the end of the session:**
+```bash
+sudo rm /etc/sudoers.d/henzard-nopasswd
+```
+sudo now requires a password again.
+
+### Step 6 — Cron deployment (phase7-crons-v2.sh)
+
+The first cron script (`phase7-crons.sh`) used `--job "$json"` syntax. That was wrong. Discovery: run `openclaw cron add --help`. The correct syntax uses named flags. The entire script was rewritten as `phase7-crons-v2.sh` (45 new crons + 7 pre-existing = 52 total).
+
+### Step 7 — TOOLS.md deployment
+
+`~/.openclaw/workspace/TOOLS.md` is the agent's identity and routing document. It is deployed via SCP from `docs/custom/vm-deploy/TOOLS.md`. Never edit the live file directly — always update the repo copy and SCP it.
+
+### Step 8 — SparkyFitness token received and stored
+
+User registered account at `http://192.168.122.82:3004/login`, generated API key under Settings → API, and provided the token. Stored as:
+```bash
+echo "TOKEN" > ~/.openclaw/secrets/sparky-token
+chmod 600 ~/.openclaw/secrets/sparky-token
+```
+
+### Step 9 — MCP route corrections
+
+After storing the token, tested all endpoints and found every route was wrong. Discovery process documented in §16. All 6 actions tested live (HTTP 200) before committing.
+
+### Step 10 — Todoist project setup (phase8-todoist-setup.sh)
+
+Ran `phase8-todoist-setup.sh` from the VM using direct Todoist API calls. Created Home and Books to Read projects, confirmed Weighsoft/Nedbank/Shopping already existed, created the `in-progress` label, and added 4 initial Home tasks.
+
+### Step 11 — E2E verification
+
+Ran `e2e-test.sh`: 34/34 passing. All test data created, verified, and cleaned up. WhatsApp test messages confirmed received on phone.
+
+### Step 12 — sudo restored, all committed
+
+Removed passwordless sudo, committed and pushed all changes.
+
+---
+
+## 20. Phase 2 bugs and fixes
+
+### B-SF1. All SparkyFitness routes were wrong
+
+**Symptom:** Every `sparky_fitness` tool call returned 404.
+
+**Root cause:** The MCP server was built using the TypeScript schema (`NormalizedFoodSchema`, `FoodVariantSchema`) which describes the API response format, not the request format. The actual endpoint paths differ entirely from the schema field names.
+
+**Wrong routes used initially:**
+- `/diary?date=...` → actual: `/food-entries?selectedDate=...`
+- `/goals` → actual: `/goals/by-date/:date`
+- `/water` → actual: `/measurements/water-intake`
+- `/weight` → actual: `/measurements/check-in/:date`
+- `/sleep?date=...` → actual: `/sleep?startDate=...&endDate=...`
+
+**Fix:** Discovered correct routes by reading the server's actual route files inside the Docker container. See §16 for the full correct table.
+
+---
+
+### B-SF2. PostgreSQL 18+ volume conflict
+
+**Symptom:** `sparkyfitness-db` container kept restarting with "PostgreSQL data in: /var/lib/postgresql/data (unused mount/volume)" and "data directory has wrong ownership".
+
+**Root cause:** PostgreSQL 18 changed the expected data directory path. The old volume from an initial failed run used the old path. The new 18+ image expected a different mount structure.
+
+**Fix:**
+1. `docker compose down`
+2. Remove old volume: `docker volume ls` + `docker volume rm <id>`
+3. Remove data dirs: `rm -rf ~/sparky/postgresql ~/sparky/backup ~/sparky/uploads`
+4. Create override file pinning to `postgres:16-alpine`
+5. `docker compose up -d`
+
+---
+
+### B-SF3. Wrong `Authorization` header
+
+**Symptom:** API calls returned `{"error":"Authentication required."}` even with the correct token.
+
+**Root cause:** Initial MCP server used `Authorization: Bearer <token>`. SparkyFitness API keys use `x-api-key: <token>`. The middleware only maps Bearer to x-api-key automatically if the token has certain characteristics (64+ chars, alphanumeric-only). The provided token had mixed case, which made the auto-map unreliable.
+
+**Fix:** Changed the MCP server to use `x-api-key` directly.
+
+---
+
+### B-SF4. Food creation: nested `default_variant` structure
+
+**Symptom:** `POST /api/foods` returned HTTP 500 — "null value in column `serving_size` of relation `food_variants` violates not-null constraint".
+
+**Root cause:** The MCP server sent a nested payload matching `NormalizedFoodSchema`:
+```json
+{ "default_variant": { "serving_size": 100, ... } }
+```
+But `food.js` model's `createFood` function reads `foodData.serving_size` (flat), not `foodData.default_variant.serving_size`. The repository INSERT uses positional `$2` for `sanitizeNumeric(foodData.serving_size)` which is `null` when the flat field is missing.
+
+**Fix:** Flatten the food payload:
+```json
+{ "name": "...", "serving_size": 100, "serving_unit": "g", "calories": 165, ... }
+```
+
+---
+
+### B-SF5. Food entry: wrong meal type and missing `variant_id`
+
+**Symptom:** `POST /api/food-entries` returned "Invalid meal type: snack".
+
+**Root cause:**
+1. SparkyFitness stores meal types as `breakfast`, `lunch`, `dinner`, `snacks` (plural). The MCP tool was sending `snack` (singular).
+2. The food entry model requires both `food_id` AND `variant_id`. Without `variant_id`, the JOIN `FROM foods f JOIN food_variants fv ON f.id = fv.food_id WHERE f.id = $1 AND fv.id = $2` returns no rows and the snapshot is null.
+
+**Fix:**
+1. Map `snack` → `snacks` in the MCP server: `const mealTypeMap = { snack: "snacks", ... }`
+2. Return `default_variant.id` from the food creation step and pass it as `variant_id` in the entry.
+
+---
+
+### B-SF6. Auth header broken in SSH one-liner (PowerShell)
+
+**Symptom:** SSH commands with quotes inside the remote command string failed with `unexpected EOF` or PowerShell parse errors.
+
+**Root cause:** PowerShell mangles quotes inside `ssh host "remote command with 'quotes'"`. Single quotes, double quotes, and backticks all cause different parse errors.
+
+**Fix:** SCP a bash script to the VM (`/tmp/test-xxx.sh`) and execute it with `ssh host "bash /tmp/test-xxx.sh"`. No quoting issues because the script file handles its own quoting.
+
+---
+
+### B-CRON1. `openclaw cron add --job "$json"` syntax error
+
+**Symptom:** `error: required option '--name <name>' not specified`
+
+**Root cause:** The initial cron script was written with `--job '{"name":"...","cron":"...","message":"..."}'` assuming the CLI accepted a JSON blob. This syntax does not exist in the OpenClaw cron CLI.
+
+**Fix:** Discovered by running `openclaw cron add --help`. The correct syntax uses individual flags: `--name`, `--cron`, `--timezone`, `--message`, `--announce`, `--channel`, `--to`.
+
+---
+
+### B-CRON2. SSH PATH missing `openclaw` binary in test
+
+**Symptom:** In `e2e-test.sh`, `openclaw cron list` returned 0 lines because `openclaw` was not in the SSH session's PATH.
+
+**Root cause:** SSH non-interactive sessions don't source `~/.bashrc` or `~/.profile`. `openclaw` lives at `~/.npm-global/bin/openclaw` which is not in the default SSH PATH.
+
+**Fix:** Use the full path in scripts: `OPENCLAW="$HOME/.npm-global/bin/openclaw"`.
+
+---
+
+### B-DOCKER1. Ubuntu 20.04 EOL + docker-model-plugin missing
+
+**Symptom:** `E: Unable to locate package docker-model-plugin` during `curl -fsSL https://get.docker.com | sudo sh`.
+
+**Root cause:** Ubuntu 20.04 (focal) reached EOL. The Docker install script installs `docker-model-plugin` which doesn't have a focal package.
+
+**Fix:** Skip the convenience script. Use the Docker apt repository directly and install only the core packages:
+```bash
+sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-buildx-plugin
+```
+
+---
+
+### B-DOCKER2. `newgrp docker` failed in SSH session
+
+**Symptom:** `newgrp: group 'docker' does not exist` after `sudo usermod -aG docker $USER`.
+
+**Root cause:** `usermod -aG` adds the user to the group but the current SSH session's group membership isn't updated until the session ends and a new one starts. `newgrp docker` needs the group to exist in the current session context.
+
+**Fix:** End the SSH session, reconnect, then `docker` commands work without `sudo`.
+
+---
+
+### B-WA1. `openclaw message send` CLI fails in SSH with "gateway timeout after 10000ms"
+
+**Symptom:** Sending a WhatsApp message via `openclaw message send ...` from an SSH session failed every time.
+
+**Root cause:** The CLI opens a WebSocket connection to the gateway. In a non-interactive SSH session the WebSocket handshake is unstable and times out.
+
+**Fix:** Use the gateway HTTP API directly:
+```bash
+curl -s -X POST http://localhost:18789/tools/invoke \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$(python3 -c "import json,sys; print(json.dumps({'tool':'message','args':{'action':'send','channel':'whatsapp','to':'+27711304241','message':sys.argv[1]}}))" "Your message here")"
+```
+Token is at `~/.openclaw/openclaw.json` → top-level `token` field.
+
+---
+
+## 21. Phase 2 lessons learned
+
+### SparkyFitness API
+
+- **Never trust schema files for route discovery.** Read the actual `app.use()` registrations in the server entry point and test with curl.
+- **Auth headers matter.** Use `x-api-key` not `Authorization: Bearer` for API keys.
+- **Meal types are plural.** `snacks` not `snack`. Always check enum values against the actual meal_types table (`GET /api/meal-types`).
+- **Two-step food logging.** SparkyFitness requires: (1) create food → get `food.id` + `default_variant.id`, (2) create food entry with both IDs. There is no single-call "log food by name" endpoint.
+- **Water is container-based.** You don't POST `amount_ml`. You POST `change_drinks` + `container_id`. The default container is ~250ml per drink. Undo by posting `change_drinks: -1`.
+- **Flat food body.** The POST `/api/foods` body is flat (`serving_size`, `calories`, etc. at top level), NOT nested inside `default_variant`.
+- **postgres:16-alpine for stability.** postgres:18+ changed the default data directory structure, breaking older volume mounts. Pin to 16.
+
+### Docker on EOL systems
+
+- **`docker-model-plugin` doesn't exist on Ubuntu 20.04.** Never use the convenience script on EOL distros. Use the apt repository and install only `docker-ce`, `docker-ce-cli`, `containerd.io`, `docker-compose-plugin`, `docker-buildx-plugin`.
+- **Group membership requires session restart.** `sudo usermod -aG docker $USER` takes effect on the next login, not the current session. Don't try to `newgrp docker` in a non-login shell.
+
+### Passwordless sudo for deployment
+
+- **Useful for one-off deployment sessions; dangerous to leave on.** Add it, do all the deployment, remove it at the end. Document the removal step.
+- **Pattern:** `echo 'user ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/user-nopasswd` + `sudo chmod 440 /etc/sudoers.d/user-nopasswd`. Remove with `sudo rm /etc/sudoers.d/user-nopasswd`.
+
+### SparkyFitness as agent tool
+
+- **`sparky_fitness` is Cursor-only.** It lives in the Cursor MCP server (`openclaw-mcp-server.mjs`). The gateway agent (WhatsApp) uses the plugin system. These are separate tool registries.
+- **To make SparkyFitness available via WhatsApp**, build a proper OpenClaw extension (like `extensions/habitica`). The pattern is: create `extensions/sparkyfitness/`, add plugin manifest, register an agent tool that calls the SparkyFitness API via fetch.
+
+### Cron system
+
+- **`openclaw cron add` uses named flags, not JSON.** Run `--help` before writing any automation.
+- **`--announce` delivers to WhatsApp.** No need to add a separate `--channel whatsapp --to "+27..."` unless sending to a different recipient than the primary WhatsApp account.
+- **PATH must be explicit in cron tests.** Use `$HOME/.npm-global/bin/openclaw` not `openclaw`.
+- **52 is a lot of crons.** Use `openclaw cron list` to audit before adding more. Check for near-duplicate prompts (e.g., two morning crons at the same time).
+
+### E2E testing principle
+
+- **Unit tests are not enough.** Real integration tests that create, read back, and delete actual data are the only way to verify an API integration works. Build the test harness before shipping.
+- **Clean up after every test.** Every test that creates data must delete it. The test harness (`e2e-test.sh`) restores all state: water is reversed, weight is restored, food + entry are deleted, Todoist task is deleted.
+- **Test the full stack.** A test that only calls curl directly misses MCP serialization bugs. The `e2e-test.sh` tests both direct API and gateway invoke paths.
+
+---
+
+## 22. E2E test harness
+
+The file `docs/custom/vm-deploy/e2e-test.sh` is the canonical verification script. Run it any time you make changes to SparkyFitness, Todoist, or cron configuration.
+
+### What it tests (34 checks)
+
+| Section | Tests |
+|---|---|
+| Gateway health | Port 18789 responding |
+| SparkyFitness reads | Dashboard stats, goals, check-in/weight, water, sleep |
+| SparkyFitness writes | Water +250ml (verified + reversed), weight 75kg (verified + restored to original), custom food creation, diary entry, dashboard update |
+| Todoist | Task creation with `in-progress` label, read-back (project + labels), project list |
+| Gateway plugins | `todoist_tasks` via `/tools/invoke`, `habitica` via `/tools/invoke`, sparky direct API |
+| Cron jobs | Count (≥50), spot-check 8 known names |
+| WhatsApp | Test message sent (round-trip confirmed by human) |
+| Cleanup | All 5 created objects deleted, original state restored |
+
+### How to run
+
+```bash
+scp docs/custom/vm-deploy/e2e-test.sh henzard@192.168.122.82:/tmp/e2e-test.sh
+ssh henzard@192.168.122.82 "bash /tmp/e2e-test.sh"
+```
+
+Expected: `34 passed, 0 failed`.
+
+### Updating the test
+
+If you add a new system (e.g., SparkyFitness exercise logging):
+1. Add a CREATE section with `CLEANUP+=("type:id:")`
+2. Add a VERIFY step (read back and assert)
+3. Add a cleanup case in section 8
+
+---
+
+## 23. Updated file map
+
+```
+# Phase 2 additions to the repo
+
+docs/custom/
+  vm-deploy/
+    TOOLS.md                         Agent identity, routing rules, project IDs, sacred calendar
+    calendar-2026.json               Seven Feasts of Israel + family birthdays (JSON for agent)
+    phase7-crons-v2.sh               45 new cron jobs (correct --name/--cron/--message syntax)
+    phase8-todoist-setup.sh          Creates Todoist projects + in-progress label via REST API
+    e2e-test.sh                      34-check E2E harness: create/verify/cleanup all systems
+    check-habitica-full.sh           Audit existing Habitica dailies/habits/todos
+    send-wa-sparky.sh                Standalone WhatsApp send via curl (bypasses CLI WebSocket)
+    deploy-all.ps1                   PowerShell orchestrator (SCP + SSH phases)
+    phase2-deploy-code.sh            VM: git pull + build + install
+    phase2b-build-install.sh         Retry: build + install after prior failure
+    phase3b-sparky-start.sh          Docker Compose SparkyFitness setup
+    test-sparky-final.sh             Confirms all 6 SparkyFitness endpoints return HTTP 200
+    [20+ other test/debug scripts]   API discovery scripts (safe to delete after onboarding)
+
+tools/
+  openclaw-mcp-server.mjs            (MODIFIED) sparky_fitness tool with correct routes + auth
+
+extensions/habitica/src/
+  tool.ts                            (MODIFIED) added create_todo + score_habit actions
+
+extensions/whatsapp/src/inbound/
+  monitor.ts                         (MODIFIED) TS2345 fix: explicit cast for sendMessage bind
+
+# On VM only (not in repo)
+~/.openclaw/secrets/sparky-token     SparkyFitness API key
+~/.openclaw/secrets/todoist-token    Todoist API token
+~/sparky/                            SparkyFitness Docker Compose dir
+~/sparky/docker-compose.override.yml pins postgres:16-alpine
+```
+
+---
+
+*Last updated: March 2026. Phase 2 complete: SparkyFitness, 52 crons, Todoist structure, Habitica integration verified, 34/34 E2E tests passing.*
