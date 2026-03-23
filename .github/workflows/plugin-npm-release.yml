@@ -1,18 +1,8 @@
 name: Plugin NPM Release
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/plugin-npm-release.yml"
-      - "extensions/**"
-      - "package.json"
-      - "scripts/lib/plugin-npm-release.ts"
-      - "scripts/plugin-npm-publish.sh"
-      - "scripts/plugin-npm-release-check.ts"
-      - "scripts/plugin-npm-release-plan.ts"
-  workflow_dispatch:
+  workflow_dispatch: # disabled on fork — run manually only if needed
+
     inputs:
       publish_scope:
         description: Publish the selected plugins or all publishable plugins from the ref

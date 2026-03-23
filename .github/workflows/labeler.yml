@@ -1,12 +1,9 @@
 name: Labeler
 
 on:
-  pull_request_target: # zizmor: ignore[dangerous-triggers] maintainer-owned triage workflow; no untrusted checkout or PR code execution
-    types: [opened, synchronize, reopened]
-  issues:
-    types: [opened]
-  workflow_dispatch:
+  workflow_dispatch: # disabled on fork — run manually only if needed
     inputs:
+
       max_prs:
         description: "Maximum number of open PRs to process (0 = all)"
         required: false

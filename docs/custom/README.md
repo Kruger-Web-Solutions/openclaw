@@ -11,6 +11,7 @@ This folder contains the complete knowledge base for this OpenClaw fork. Every d
 | **[implementation-guide.md](implementation-guide.md)** | Full story: every feature built, every bug, all lessons learned (Phase 1 + Phase 2) | You are new to this fork or starting a new development session |
 | **[ssh-and-vm-operations.md](ssh-and-vm-operations.md)** | SSH setup, PowerShell gotchas, sudo, gateway ops, diagnostics, model switching | Something on the VM isn't working, or you need to deploy |
 | **[mcp-implementation-guide.md](mcp-implementation-guide.md)** | Deep-dive on the MCP server (14 tools, transport decisions, Todoist + SparkyFitness integration) | You are adding or debugging MCP tools |
+| **[personal-assistant-runbook.md](personal-assistant-runbook.md)** | Ongoing ops: IP change, token rotation, cron management, annual calendar refresh, goals session | Maintaining the live system after initial deployment |
 | **[vm-deploy/](vm-deploy/)** | Ready-to-run deploy scripts: TOOLS.md, calendar-2026.json, cron setup, SparkyFitness, E2E tests, full orchestration | You are deploying the personal assistant system to the VM |
 
 ---
@@ -63,3 +64,15 @@ This folder contains the complete knowledge base for this OpenClaw fork. Every d
 **How to verify the full system is working →** [implementation-guide.md §22](implementation-guide.md#22-e2e-test-harness) — run `e2e-test.sh`
 
 **`sparky_fitness` not available to WhatsApp agent →** [implementation-guide.md §21](implementation-guide.md#21-phase-2-lessons-learned) — it's Cursor MCP only; build an extension for gateway access
+
+**VM IP changed →** [personal-assistant-runbook.md §1](personal-assistant-runbook.md#1-vm-ip-changed)
+
+**Rotate a token / credential →** [personal-assistant-runbook.md §2](personal-assistant-runbook.md#2-rotate-a-secret-token)
+
+**Add or change a cron job →** [personal-assistant-runbook.md §4](personal-assistant-runbook.md#4-add-change-or-remove-a-cron-job)
+
+**Update TOOLS.md (agent identity) →** [personal-assistant-runbook.md §5](personal-assistant-runbook.md#5-update-toolsmd)
+
+**Annual calendar / feast date refresh →** [personal-assistant-runbook.md §6](personal-assistant-runbook.md#6-annual-calendar-refresh)
+
+**Set up annual goals (MEMORY.md) →** [personal-assistant-runbook.md §7](personal-assistant-runbook.md#7-memorymd-and-annual-goals-session)

@@ -46,6 +46,7 @@ Run through this after every full deployment. Tick each item only after you have
 - [ ] `~/.openclaw/workspace/TOOLS.md` exists and is up to date
 - [ ] `~/.openclaw/workspace/calendar-2026.json` exists
 - [ ] `~/.openclaw/workspace/MEMORY.md` exists (even if empty scaffold)
+- [ ] `~/.openclaw/secrets/contacts.env` exists with real phone numbers (copy from `contacts.env.example`)
 
 ---
 

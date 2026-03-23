@@ -1,10 +1,7 @@
 name: Workflow Sanity
 
 on:
-  pull_request:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch: # disabled on fork — run manually only if needed
 
 concurrency:
   group: workflow-sanity-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

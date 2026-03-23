@@ -81,7 +81,7 @@ Write-Host "  $health" -ForegroundColor Gray
 # ─── Phase 7: Create cron jobs ───────────────────────────────────────────────
 
 Write-Host "`n[7] Creating cron jobs (this may take a minute)..." -ForegroundColor Cyan
-scp -i $sshKey "$repoRoot\docs\custom\vm-deploy\phase7-crons.sh" "${vm}:/tmp/oc-phase7.sh"
+scp -i $sshKey "$repoRoot\docs\custom\vm-deploy\phase7-crons-v2.sh" "${vm}:/tmp/oc-phase7.sh"
 ssh -i $sshKey $vm "bash /tmp/oc-phase7.sh && rm /tmp/oc-phase7.sh"
 Write-Host "  Phase 7 complete" -ForegroundColor Green
 
@@ -91,7 +91,7 @@ Write-Host "`n=== Deployment Complete ===" -ForegroundColor Green
 Write-Host ""
 Write-Host "Remaining manual steps:" -ForegroundColor Yellow
 Write-Host "  1. SPARKY: SSH to VM → edit ~/sparky/.env → docker compose up -d" -ForegroundColor Yellow
-Write-Host "  2. SPARKY: Create account at http://${vmIP}:8080 → set macro goals → create saved meals → get API token" -ForegroundColor Yellow
+  Write-Host "  2. SPARKY: Create account at http://${vmIP}:3004 → set macro goals → create saved meals → get API token" -ForegroundColor Yellow
 Write-Host "  3. SPARKY: echo 'your-token' > ~/.openclaw/secrets/sparky-token" -ForegroundColor Yellow
 Write-Host "  4. GCAL: Todoist app → Settings → Integrations → Google Calendar → enable two-way sync" -ForegroundColor Yellow
 Write-Host "  5. CURSOR: Ctrl+Shift+P → 'MCP: Reconnect servers'" -ForegroundColor Yellow
