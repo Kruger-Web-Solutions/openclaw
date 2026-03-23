@@ -2,6 +2,8 @@
 
 > **Audience:** Developers extending this fork, future contributors, and anyone wanting to add new MCP tools or replicate this setup from scratch.
 >
+> This guide covers the MCP server specifically. For the full end-to-end story (WhatsApp archive, faster-whisper, Habitica, rate limiter, deployment, cron alignment, upstream merge), see [implementation-guide.md](implementation-guide.md).
+>
 > This guide captures the full plan, every architectural decision, every painful bug, and everything we learned building the OpenClaw MCP server. If you are doing this again or adding to it, read this first.
 
 ---
@@ -73,6 +75,22 @@ The `openclaw` CLI only exists on the VM. The gateway WebSocket is only reachabl
 
 **The correct mental model:** The MCP server is a thin adapter — it just translates MCP JSON-RPC calls into local CLI/HTTP/SQLite calls on the VM. Cursor tunnels its stdio over SSH to reach it.
 
+#### The pivot story — why we didn't stay local
+
+The server was **initially built to run locally on Windows**, with SSH helper functions (`sshRun`, `runOnVM`, `queryArchiveOnVM`) to execute CLI commands remotely and `queryArchiveOnVM` using `ssh … sqlite3` for archive reads.
+
+This failed in three ways:
+
+1. **"Tool not available: message"** — The gateway's `tools.profile: "coding"` didn't include `message` in its allowlist. `/tools/invoke` rejected it. Workaround needed: add `"message"` to `tools.alsoAllow`.
+
+2. **"gateway client stopped"** — Even after allowing `message`, the CLI-via-SSH path for `openclaw message send` dropped its WebSocket connection 3–5 seconds into every call. No controlling terminal in the SSH session meant keepalives didn't work.
+
+3. **MCP SDK not found** — When we moved the server to the VM but launched it from `~` instead of `~/openclaw-custom`, `Cannot find package '@modelcontextprotocol/sdk'` crashed the server on every startup.
+
+The decision to run the server **directly on the VM** (launched via `ssh … node tools/openclaw-mcp-server.mjs`) eliminated all three issues at once: CLI runs locally (no SSH overhead), the gateway WebSocket is local, and the SDK is in `node_modules` right there.
+
+**Lesson: do not try to bridge two machines in an MCP server. Run where the tools are.**
+
 ### Why SSH stdio (not HTTP/WebSocket transport)
 
 - Zero extra ports to open or firewall
@@ -132,7 +150,19 @@ The AI can call `whatsapp_send` in a loop (e.g. broadcasting to multiple groups)
 ### How it works
 
 ```typescript
-// Sliding window: track timestamps of recent sends in a ring buffer
+export class WhatsAppRateLimitError extends Error {
+  readonly retryAfterMs: number;
+  constructor(retryAfterMs: number, windowConfig: { maxMessages: number; windowSeconds: number }) {
+    super(
+      `Outbound rate limit exceeded (${windowConfig.maxMessages} messages in ${windowConfig.windowSeconds}s). ` +
+      `Retry in ${Math.ceil(retryAfterMs / 1000)}s.`
+    );
+    this.name = "WhatsAppRateLimitError";
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+// Sliding window: track timestamps of recent sends
 // acquire() throws WhatsAppRateLimitError if window is full
 // wrapSendMessage() wraps sock.sendMessage transparently
 
@@ -207,6 +237,19 @@ Always use this instead of bare `fetch`. The gateway can hang connections.
 
 Used for `whatsapp_send`, `whatsapp_poll`, `whatsapp_react`, `habitica`. These go via HTTP because the CLI's WebSocket connection to the gateway is unreliable in non-interactive SSH sessions (see bug log §8.3).
 
+**Gateway prerequisite:** The gateway must have `message` in its tool allowlist or the call will return `"Tool not available: message"`. The `coding` profile does not include it by default:
+
+```json
+{
+  "tools": {
+    "profile": "coding",
+    "alsoAllow": ["message"]
+  }
+}
+```
+
+Without this, `invokeGatewayTool("message", ...)` returns a 403-like error and WhatsApp sends silently fail.
+
 #### `toContent(result)` — normalise to MCP response
 
 ```javascript
@@ -268,9 +311,16 @@ Always use the two-argument form of `z.record()` when accepting arbitrary object
 
 ### Background
 
-A standalone Python script (`~/.openclaw/workspace/scripts/add-todoist-grocery.py`) already existed on the VM for adding grocery items. It was not accessible to the AI. We:
+The Todoist integration was **discovered**, not planned from scratch. When investigating why Todoist "didn't seem right," we found:
 
-1. Fixed a critical bug in the script
+1. A standalone Python script (`~/.openclaw/workspace/scripts/add-todoist-grocery.py`) on the VM that added grocery items directly to Todoist via `urllib.request`. It had never been exposed to the AI agent — it was a manual script.
+2. A grocery store config at `~/.openclaw/workspace/config/todoist-groceries.json` mapping stores to Todoist project/section IDs.
+3. A Todoist token at `~/.openclaw/secrets/todoist-token`.
+4. **A critical bug in the script** (see below).
+
+The right path was: fix the script, then expose the full Todoist CRUD surface via MCP tools so the AI can use it natively. We:
+
+1. Fixed the critical bug in the script
 2. Added grocery-config-aware store detection to the MCP server
 3. Exposed full CRUD for all Todoist resource types
 
@@ -307,23 +357,29 @@ if store.get("section_id"):
 
 ### Grocery config shape
 
-Stored at `~/.openclaw/workspace/config/todoist-groceries.json`:
+Stored at `~/.openclaw/workspace/config/todoist-groceries.json`. Full production config:
 
 ```json
 {
-  "project": { "id": "...", "name": "Shopping" },
+  "project": { "id": "6CrfjhGM476WQJX7", "name": "Shopping" },
   "default_store": "checkers",
   "stores": {
-    "checkers": {
-      "section_id": "...",
-      "section_name": "Checkers",
-      "aliases": ["checkers"]
-    }
+    "checkers":         { "section_id": "6g9Gp2H3W3M3vpJf", "section_name": "Checkers",        "aliases": ["checkers"] },
+    "dischem":          { "section_id": "6g9Gp2RQxxpvpcW7", "section_name": "Dischem",          "aliases": ["dischem","dis-chem"] },
+    "takealot":         { "section_id": "6g9Gp2WPCvJjH5cf", "section_name": "TakeALot",         "aliases": ["takealot","take a lot"] },
+    "faithfultonature": { "section_id": "6g9Gp2gx3gmRF5xf", "section_name": "FaithfulToNature", "aliases": ["faithfultonature","faithful to nature","nature"] },
+    "pharmacy":         { "section_id": "6g9Gp2RQxxpvpcW7", "section_name": "Pharmacy",         "aliases": ["pharmacy","meds","supplements","pharma"] },
+    "djvleis":          { "section_id": "6g9Gp2hJwQ7jWVm7", "section_name": "DJ Vleis",         "aliases": ["djvleis","dj vleis","butcher"] },
+    "pnp":              { "section_id": "6g9Gp2f5Rmw26CH7", "section_name": "PnP",              "aliases": ["pnp","pick n pay","picknpay","pick and pay"] },
+    "woolies":          { "section_id": "6g9Gp2hJwQ7jWVm7", "section_name": "Woolies",          "aliases": ["woolies","woolworths"] },
+    "builders":         { "section_id": null,                "section_name": "Builders",         "aliases": ["builders"] }
   }
 }
 ```
 
-Store is auto-detected from the task content string by matching aliases. Falls back to `default_store` if nothing matches.
+**Note:** `builders` has `section_id: null`. The grocery action must handle this gracefully by skipping `section_id` in the API payload — this was part of the script bug fix.
+
+Store is auto-detected from the task content string by matching aliases. Falls back to `default_store` ("checkers") if nothing matches.
 
 ### Tool split decision
 
@@ -498,7 +554,6 @@ This is the full history of issues encountered and how they were resolved. Read 
 **Do not attempt** to pass multi-line scripts inline via PowerShell `ssh`. It will never work.
 
 ### 8.9 Todoist `payload` referenced before assignment (Python script)
-
 **Symptom:** `add-todoist-grocery.py` throws `NameError: name 'payload' is not defined`.
 
 **Cause:** The original script tried to set `payload['section_id']` on line N, but `payload = {}` was on line N+3.
@@ -520,14 +575,66 @@ if store.get("section_id"):
 
 ---
 
+### 8.11 Gateway blocked `message` tool — "Tool not available: message"
+
+**Symptom:** `whatsapp_send` returns `{ ok: false, error: "Tool not available: message" }` even though the gateway is up and healthy.
+
+**Cause:** The gateway `tools.profile: "coding"` profile does not include the `message` tool by default. `POST /tools/invoke` with `tool: "message"` returns a 403-equivalent error.
+
+**Fix:** Add `"message"` to `tools.alsoAllow` in `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "tools": {
+    "profile": "coding",
+    "alsoAllow": ["message"]
+  }
+}
+```
+
+Then restart the gateway: `systemctl --user restart openclaw-gateway`.
+
+This is a **one-time config change** on the VM. It must be done before any WhatsApp sends from the MCP server will work.
+
+---
+
+### 8.12 `whatsapp_contacts` returned `[]` — not a bug
+
+**Symptom:** `whatsapp_contacts` consistently returns an empty array.
+
+**Initial suspicion:** MCP invocation error, or `openclaw directory peers list` broken.
+
+**Root cause:** The WhatsApp directory was genuinely empty. No peers had been added yet.
+
+**Verification:**
+```bash
+ssh -i $sshKey henzard@192.168.122.82 "source ~/.profile && openclaw directory peers list --channel whatsapp --json"
+# Returns: []
+```
+
+**Takeaway:** An empty response from `whatsapp_contacts` is valid. The directory populates as WhatsApp messages are sent and received. Do not debug the MCP layer until you've verified the underlying CLI returns data.
+
+---
+
+### 8.13 `runCLILenient` created then removed
+
+**Context:** Before the `whatsapp_status` bypass was implemented, we introduced a `runCLILenient` function — a variant of `runCLI` that returned partial results or `null` instead of an error object if the CLI timed out. This was intended to let `whatsapp_status` return something rather than nothing.
+
+**Why it was removed:** `runCLILenient` with a 20s timeout still timed out on `openclaw channels status` (which took ~28s due to Ollama scan). The output was incomplete and unusable. The approach was abandoned in favour of the direct file read + HTTP health check combination (which takes < 1s).
+
+**Lesson:** Don't try to make a slow CLI call work by tolerating failures — replace it entirely with a faster data source.
+
+---
+
 ## 9. Lessons learned
 
 ### Architecture
 
-- **Run the MCP server on the VM, not locally.** The CLI is only on the VM. Trying to tunnel everything via SSH from a local server adds complexity and failure modes with no benefit.
+- **Run the MCP server on the VM, not locally.** The CLI is only on the VM. Trying to tunnel everything via SSH from a local server adds complexity and failure modes with no benefit. We tried local with SSH helpers — it failed on WebSocket drops, tool allowlist blocks, and module resolution. Moving to VM fixed all three at once.
 - **Use HTTP for gateway-native tools, CLI for everything else.** The gateway's WebSocket-based CLI commands are fragile in non-interactive SSH sessions. The REST API (`/tools/invoke`) is reliable.
 - **Direct file/SQLite reads beat the CLI for frequently-called, latency-sensitive tools.** `whatsapp_status` and `whatsapp_archive` are both faster and more reliable reading files directly.
 - **One tool per resource type, not one tool per concept.** A single "todoist" tool with 20 actions is hard for the AI to use correctly. Four focused tools with 5–9 actions each are better.
+- **Don't tolerate a slow CLI call — replace it.** `runCLILenient` with a generous timeout still timed out. The right fix was to bypass the CLI entirely.
 
 ### Security
 
@@ -554,7 +661,9 @@ if store.get("section_id"):
 1. SCP a test shell script to `/tmp/` on the VM, run it via `ssh host "bash /tmp/test.sh"`, delete it.
 2. Test the Todoist/gateway API directly with `curl` on the VM before writing Node code.
 3. To verify tool count without starting the full MCP server: `grep -c "server.tool(" tools/openclaw-mcp-server.mjs`
-4. To check gateway tool invocability: `curl -X POST http://localhost:18789/tools/invoke -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"tool":"message","action":"send",...}'`
+4. To check gateway tool invocability: `curl -s -X POST http://localhost:18789/tools/invoke -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"tool":"message","args":{"action":"send",...}}'`
+5. **Verify the underlying CLI before blaming the MCP layer.** `whatsapp_contacts` returning `[]` looked like a bug but was an empty directory. Always SSH and run the CLI command manually to check the raw output first.
+6. **Empty response ≠ error.** Many valid CLI/API calls return empty lists. Distinguish between "the tool failed" and "there's genuinely no data."
 
 ---
 
