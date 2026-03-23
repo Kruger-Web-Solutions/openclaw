@@ -34,7 +34,7 @@ const ARCHIVE_DB                = `${HOME}/.openclaw/whatsapp/archive.sqlite`;
 const TODOIST_TOKEN_PATH        = `${HOME}/.openclaw/secrets/todoist-token`;
 const TODOIST_GROCERY_CFG_PATH  = `${HOME}/.openclaw/workspace/config/todoist-groceries.json`;
 const TODOIST_API               = "https://api.todoist.com/api/v1";
-const SPARKY_BASE               = "http://localhost:8080/api";
+const SPARKY_BASE               = "http://localhost:3004/api";
 const SPARKY_TOKEN_PATH         = `${HOME}/.openclaw/secrets/sparky-token`;
 
 /** Read gateway auth token from the openclaw config file. */
