@@ -47,13 +47,16 @@ Install ffmpeg (required for Whisper to decode OGG/Opus audio):
 sudo apt update && sudo apt install -y ffmpeg python3 python3-pip
 ```
 
-Install faster-whisper CLI:
+Install faster-whisper and create the CLI wrapper:
+
+> **Note:** `pip install faster-whisper` installs a Python library, not a CLI binary. A wrapper script is required. See the full setup in [`docs/custom/implementation-guide.md` § 4](docs/custom/implementation-guide.md#4-feature-2-voice-note-transcription-faster-whisper).
 
 ```bash
-pip3 install faster-whisper
+python3 -m venv ~/whisper-env
+~/whisper-env/bin/pip install faster-whisper==1.2.1
 ```
 
-Verify:
+Then create the CLI wrapper as described in the implementation guide. Verify:
 
 ```bash
 ffmpeg -version
@@ -116,7 +119,7 @@ pnpm build
 This replaces the old npm-installed `openclaw` binary with your custom build:
 
 ```bash
-sudo npm i -g .
+npm i -g .
 ```
 
 Verify the binary now points to your custom build:
@@ -272,7 +275,7 @@ pnpm build
 ### Step 5: Re-link and restart
 
 ```bash
-sudo npm i -g .
+npm i -g .
 openclaw doctor
 openclaw gateway restart
 ```
@@ -305,7 +308,7 @@ cd ~/openclaw-custom
 git pull origin main
 pnpm install
 pnpm build
-sudo npm i -g .
+npm i -g .
 openclaw gateway restart
 ```
 
@@ -323,7 +326,7 @@ git log --oneline -10          # find the last good commit
 git checkout <good-commit-sha>
 pnpm install
 pnpm build
-sudo npm i -g .
+npm i -g .
 openclaw gateway restart
 ```
 

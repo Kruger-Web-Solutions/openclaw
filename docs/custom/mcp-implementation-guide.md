@@ -31,12 +31,13 @@ A **Model Context Protocol (MCP) server** that lets Cursor (or any MCP-compatibl
 | Capability | Tools |
 |---|---|
 | WhatsApp | `whatsapp_status`, `whatsapp_contacts`, `whatsapp_send`, `whatsapp_poll`, `whatsapp_react`, `whatsapp_archive` |
-| Habitica | `habitica` |
+| Habitica | `habitica` (dashboard / dailies / habits / todos / stats / complete / create_todo / score_habit) |
 | Todoist | `todoist_tasks`, `todoist_projects`, `todoist_labels`, `todoist_sections` |
 | Cron | `cron` |
+| SparkyFitness | `sparky_fitness` (diary / log_food / log_water / goals / weight / summary / sleep) |
 | Gateway | `gateway_health` |
 
-**Total: 13 tools.**
+**Total: 14 tools.**
 
 Secondary deliverable: a per-account **WhatsApp outbound rate limiter** baked into the OpenClaw extension layer, protecting all send paths (not just MCP) from anti-spam bans.
 

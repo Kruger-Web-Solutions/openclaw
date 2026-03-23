@@ -40,7 +40,8 @@ This fork adds to the upstream [openclaw/openclaw](https://github.com/openclaw/o
 | **faster-whisper** | Transcribes WhatsApp voice notes locally using the `large-v3` model | Live |
 | **Habitica plugin** | Native agent tool for Habitica tasks/dailies/dashboard | Live |
 | **WhatsApp rate limiter** | Sliding-window outbound send limiter protecting all send paths | Live |
-| **MCP server** | stdio MCP server giving Cursor 13 tools over SSH to a running OpenClaw instance | Live |
+| **MCP server** | stdio MCP server giving Cursor 14 tools over SSH to a running OpenClaw instance | Live |
+| **SparkyFitness** | Self-hosted nutrition + health tracker with MCP tool for macro logging, hydration, weight, sleep | Live |
 
 **Remotes:**
 - `origin` — `https://github.com/henzard/openclaw.git`
@@ -249,7 +250,7 @@ extensions/habitica/
   index.ts                Plugin entry point — unconditionally registers the tool
   openclaw.plugin.json    Manifest — enabledByDefault: true
   src/
-    tool.ts               createHabiticaTool() — lazy auth, 6 actions
+    tool.ts               createHabiticaTool() — lazy auth, 8 actions
     tool.test.ts
     api.ts                Habitica REST API client
     api.test.ts
@@ -265,6 +266,8 @@ extensions/habitica/
 | `todos` | List todos |
 | `stats` | Character stats |
 | `complete` | Mark a task complete (requires `task_id`) |
+| `create_todo` | Create a new todo, daily, or habit (requires `title`; optional `task_type`, `notes`, `priority`) |
+| `score_habit` | Score a habit up or down (requires `task_id`, optional `direction` up/down, default up) |
 
 ### Auth pattern: lazy, not eager
 
@@ -1019,7 +1022,7 @@ src/media-understanding/
   runner.faster-whisper.test.ts    Tests
 
 tools/
-  openclaw-mcp-server.mjs          MCP server (runs on VM, 13 tools)
+  openclaw-mcp-server.mjs          MCP server (runs on VM, 14 tools)
   openclaw-mcp-server.test.mjs     Integration tests
 
 .cursor/
