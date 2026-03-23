@@ -118,18 +118,18 @@ export async function fetchDashboard(auth: HabiticaAuth) {
       class: stats.class,
     },
     overdueDailies: overdueDailies.map((d) => ({
-      name: d.text,
+      text: d.text,
       streak: d.streak,
       notes: d.notes || undefined,
     })),
     incompleteTodos: incompleteTodos.map((t) => ({
-      name: t.text,
+      text: t.text,
       priority: t.priority,
       due: t.date || undefined,
       notes: t.notes || undefined,
     })),
     habits: habits.map((h) => ({
-      name: h.text,
+      text: h.text,
       value: h.value,
     })),
     summary: {

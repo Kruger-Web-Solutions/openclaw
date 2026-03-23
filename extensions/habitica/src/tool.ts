@@ -82,9 +82,8 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
         return jsonResult({
           total: tasks.length,
           overdue: overdue.length,
-          // id intentionally omitted — use title to complete tasks
           dailies: tasks.map((t) => ({
-            name: t.text,
+            text: t.text,
             completed: t.completed,
             isDue: t.isDue,
             streak: t.streak,
@@ -96,9 +95,8 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
         const tasks = await fetchTasks(auth, "habits");
         return jsonResult({
           total: tasks.length,
-          // id intentionally omitted — use title to score habits
           habits: tasks.map((t) => ({
-            name: t.text,
+            text: t.text,
             value: t.value,
           })),
         });
@@ -110,9 +108,8 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
         return jsonResult({
           total: tasks.length,
           incomplete: incomplete.length,
-          // id intentionally omitted — use title to complete tasks
           todos: incomplete.map((t) => ({
-            name: t.text,
+            text: t.text,
             priority: t.priority,
             due: t.date || undefined,
             notes: t.notes || undefined,

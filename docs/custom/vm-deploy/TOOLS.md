@@ -173,7 +173,7 @@ These rules apply to every reply. No exceptions.
 
 ### Never expose internal IDs
 - **Never** display UUIDs, numeric IDs, or raw API field values (e.g. `86cef932-1995-4bc5-8428-c0350e9ee13c`) to Henzard.
-- Always use the human-readable **task title / name** from the API response (`text` field for Habitica, `content` field for Todoist).
+- Always use the human-readable **task name** from the tool response — never the `id` field.
 - If a task somehow has no title, describe it as `"(untitled task)"` — never fall back to showing the ID.
 
 ### Habitica task responses

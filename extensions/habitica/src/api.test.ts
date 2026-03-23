@@ -242,7 +242,7 @@ describe("habitica api", () => {
       expect(dashboard.summary.completedDailies).toBe(1);
       expect(dashboard.summary.overdueDailies).toBe(1);
       expect(dashboard.overdueDailies).toHaveLength(1);
-      expect(dashboard.overdueDailies[0]!.name).toBe("Daily 1");
+      expect(dashboard.overdueDailies[0]!.text).toBe("Daily 1");
 
       expect(dashboard.summary.totalTodos).toBe(2);
       expect(dashboard.summary.incompleteTodos).toBe(1);
