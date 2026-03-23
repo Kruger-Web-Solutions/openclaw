@@ -946,7 +946,7 @@ server.tool(
     date:   z.string().optional().describe("YYYY-MM-DD (defaults to today)."),
     // log_food params
     food:   z.string().optional().describe("Food name or saved meal name — required for log_food."),
-    meal:   z.enum(["breakfast", "lunch", "dinner", "snack"]).optional().describe("Meal slot — required for log_food."),
+    meal:   z.enum(["breakfast", "lunch", "dinner", "snack", "snacks"]).optional().describe("Meal slot — required for log_food. 'snack' and 'snacks' are both accepted."),
     amount: z.number().optional().describe("Amount in grams (food) or ml (water)."),
     calories: z.number().optional().describe("Override calories (kcal) when food is not in DB."),
     protein:  z.number().optional().describe("Override protein (g)."),
@@ -981,30 +981,31 @@ server.tool(
     if (action === "log_food") {
       if (!food) return { content: [{ type: "text", text: "food is required for action=log_food." }], isError: true };
       if (!meal) return { content: [{ type: "text", text: "meal is required for action=log_food." }], isError: true };
-      // Step 1: create a custom food item
+      // Normalize meal type: "snack" → "snacks" (SparkyFitness uses plural names)
+      const mealTypeMap = { breakfast: "breakfast", lunch: "lunch", dinner: "dinner", snack: "snacks", snacks: "snacks" };
+      const mealType = mealTypeMap[meal] ?? meal;
+      // Step 1: create a custom food item (flat structure required by SparkyFitness food.js model)
       const foodBody = {
         name: food,
         is_custom: true,
-        default_variant: {
-          serving_size: amount ?? 100,
-          serving_unit: "g",
-          calories: calories ?? 0,
-          protein: protein ?? 0,
-          carbs: carbs ?? 0,
-          fat: fat ?? 0,
-          is_default: true,
-        },
-        variants: [],
+        serving_size: amount ?? 100,
+        serving_unit: "g",
+        calories: calories ?? 0,
+        protein: protein ?? 0,
+        carbs: carbs ?? 0,
+        fat: fat ?? 0,
       };
       const foodResult = await sparkyRequest("POST", "/foods", foodBody);
       if (!foodResult.ok) return toContent(foodResult);
       const foodId = foodResult.data?.id;
+      const variantId = foodResult.data?.default_variant?.id;
       if (!foodId) return { content: [{ type: "text", text: `Food created but no ID returned: ${JSON.stringify(foodResult.data)}` }], isError: true };
       // Step 2: create the diary entry
       const entryBody = {
         food_id: foodId,
+        variant_id: variantId,
         entry_date: d,
-        meal_type: meal,
+        meal_type: mealType,
         quantity: amount ?? 100,
         unit: "g",
       };

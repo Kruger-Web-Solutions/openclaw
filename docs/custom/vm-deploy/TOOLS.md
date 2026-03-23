@@ -190,7 +190,12 @@ Use these rules to determine which tool to call for any user message. Apply the 
 | SparkyFitness token   | `~/.openclaw/secrets/sparky-token`                                   |
 | Habitica User ID      | env `HABITICA_USER_ID`                                               |
 | Habitica API Key      | env `HABITICA_API_KEY`                                               |
-| Todoist Personal proj | id `6CrfjhGM476WQJX7`                                               |
+| Todoist Personal proj | id `6CrfjhGM476WQJX7` (Shopping)                                    |
+| Todoist Weighsoft     | id `6CrfjhGM4V85H3wj`                                               |
+| Todoist Nedbank       | id `6CrfjhGM4HhFMc3h`                                               |
+| Todoist Home          | id `6gF6W9VPrmQJF8Q8`                                               |
+| Todoist Books to Read | id `6gF6W9fw2w7MvfjJ`                                               |
+| Todoist in-progress   | label id `2183350196` (name: `in-progress`)                         |
 | Todoist grocery cfg   | `workspace/config/todoist-groceries.json` (Checkers default store)  |
 | Grocery quick-add     | `workspace/scripts/add-todoist-grocery.py "item [store]"`           |
 
