@@ -1,0 +1,61 @@
+{
+  "birthdays": [
+    { "name": "Henzard", "date": "2026-01-25", "type": "self" },
+    { "name": "Alicia",  "date": "2026-06-12", "type": "spouse" },
+    { "name": "Kealyn",  "date": "2026-08-01", "type": "child" }
+  ],
+  "feasts": [
+    {
+      "name": "Passover",
+      "hebrew": "Pesach",
+      "scripture": "Lev 23:5",
+      "start": "2026-04-06",
+      "end": "2026-04-07",
+      "note": "Remembrance of redemption. The Lamb."
+    },
+    {
+      "name": "Unleavened Bread",
+      "scripture": "Lev 23:6-8",
+      "start": "2026-04-07",
+      "end": "2026-04-14",
+      "note": "Seven days. Remove leaven. Reflect on sin and holiness."
+    },
+    {
+      "name": "Firstfruits",
+      "scripture": "Lev 23:9-14",
+      "start": "2026-04-18",
+      "end": "2026-04-19",
+      "note": "First of the harvest. The resurrection. New life."
+    },
+    {
+      "name": "Weeks (Shavuot)",
+      "scripture": "Lev 23:15-22",
+      "start": "2026-06-06",
+      "end": "2026-06-07",
+      "note": "50 days from Firstfruits. The giving of the Word and the Spirit."
+    },
+    {
+      "name": "Trumpets (Yom Teruah)",
+      "scripture": "Lev 23:23-25",
+      "start": "2026-09-22",
+      "end": "2026-09-23",
+      "note": "The shofar. Awakening. Return."
+    },
+    {
+      "name": "Atonement (Yom Kippur)",
+      "scripture": "Lev 23:26-32",
+      "start": "2026-10-01",
+      "end": "2026-10-02",
+      "note": "The most solemn day. Fasting, afflicting the soul, rest. No work.",
+      "fast": true,
+      "suppress_crons": true
+    },
+    {
+      "name": "Tabernacles (Sukkot)",
+      "scripture": "Lev 23:33-43",
+      "start": "2026-10-06",
+      "end": "2026-10-13",
+      "note": "Eight days. Dwell with God. Rejoice. Harvest completed."
+    }
+  ]
+}
