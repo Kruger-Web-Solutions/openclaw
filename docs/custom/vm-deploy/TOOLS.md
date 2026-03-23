@@ -183,6 +183,17 @@ Use these rules to determine which tool to call for any user message. Apply the 
 | `whatsapp_status`  | Check WhatsApp session + gateway health                                     |
 | `gateway_health`   | Check gateway uptime and channel states                                     |
 
+### Credentials & Config Paths
+| Resource              | Path                                                                 |
+| --------------------- | -------------------------------------------------------------------- |
+| Todoist API token     | `~/.openclaw/secrets/todoist-token`                                  |
+| SparkyFitness token   | `~/.openclaw/secrets/sparky-token`                                   |
+| Habitica User ID      | env `HABITICA_USER_ID`                                               |
+| Habitica API Key      | env `HABITICA_API_KEY`                                               |
+| Todoist Personal proj | id `6CrfjhGM476WQJX7`                                               |
+| Todoist grocery cfg   | `workspace/config/todoist-groceries.json` (Checkers default store)  |
+| Grocery quick-add     | `workspace/scripts/add-todoist-grocery.py "item [store]"`           |
+
 ---
 
 ## Sacred Calendar 2026

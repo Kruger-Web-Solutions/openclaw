@@ -907,8 +907,9 @@ async function sparkyRequest(method, path, body) {
   if (!token) {
     return { ok: false, error: `No SparkyFitness token found at ${SPARKY_TOKEN_PATH}. Generate one in SparkyFitness Settings → API.` };
   }
+  // SparkyFitness uses x-api-key header (middleware auto-maps Bearer to x-api-key for API keys)
   const headers = {
-    Authorization: `Bearer ${token}`,
+    "x-api-key": token,
     "Content-Type": "application/json",
   };
   try {
@@ -959,50 +960,76 @@ server.tool(
     const d = date ?? today;
 
     if (action === "diary") {
-      return toContent(await sparkyRequest("GET", `/diary?date=${d}`));
+      return toContent(await sparkyRequest("GET", `/food-entries?selectedDate=${d}`));
     }
 
     if (action === "summary") {
-      // Fetch both diary and goals then compute progress
-      const [diary, goals] = await Promise.all([
-        sparkyRequest("GET", `/diary?date=${d}`),
-        sparkyRequest("GET", "/goals"),
+      // Fetch dashboard stats + goals for a rich summary
+      const [stats, goals] = await Promise.all([
+        sparkyRequest("GET", `/dashboard/stats?date=${d}`),
+        sparkyRequest("GET", `/goals/by-date/${d}`),
       ]);
-      if (!diary.ok) return toContent(diary);
+      if (!stats.ok) return toContent(stats);
       if (!goals.ok) return toContent(goals);
-      return toContent({ ok: true, data: { date: d, diary: diary.data, goals: goals.data } });
+      return toContent({ ok: true, data: { date: d, stats: stats.data, goals: goals.data } });
     }
 
     if (action === "goals") {
-      return toContent(await sparkyRequest("GET", "/goals"));
+      return toContent(await sparkyRequest("GET", `/goals/by-date/${d}`));
     }
 
     if (action === "log_food") {
       if (!food) return { content: [{ type: "text", text: "food is required for action=log_food." }], isError: true };
       if (!meal) return { content: [{ type: "text", text: "meal is required for action=log_food." }], isError: true };
-      const body = { food_name: food, meal_type: meal, date: d };
-      if (amount   !== undefined) body.amount_g   = amount;
-      if (calories !== undefined) body.calories   = calories;
-      if (protein  !== undefined) body.protein_g  = protein;
-      if (carbs    !== undefined) body.carbs_g    = carbs;
-      if (fat      !== undefined) body.fat_g      = fat;
-      return toContent(await sparkyRequest("POST", "/diary", body));
+      // Step 1: create a custom food item
+      const foodBody = {
+        name: food,
+        is_custom: true,
+        default_variant: {
+          serving_size: amount ?? 100,
+          serving_unit: "g",
+          calories: calories ?? 0,
+          protein: protein ?? 0,
+          carbs: carbs ?? 0,
+          fat: fat ?? 0,
+          is_default: true,
+        },
+        variants: [],
+      };
+      const foodResult = await sparkyRequest("POST", "/foods", foodBody);
+      if (!foodResult.ok) return toContent(foodResult);
+      const foodId = foodResult.data?.id;
+      if (!foodId) return { content: [{ type: "text", text: `Food created but no ID returned: ${JSON.stringify(foodResult.data)}` }], isError: true };
+      // Step 2: create the diary entry
+      const entryBody = {
+        food_id: foodId,
+        entry_date: d,
+        meal_type: meal,
+        quantity: amount ?? 100,
+        unit: "g",
+      };
+      return toContent(await sparkyRequest("POST", "/food-entries", entryBody));
     }
 
     if (action === "log_water") {
-      const ml = amount ?? 1200;
-      return toContent(await sparkyRequest("POST", "/water", { date: d, amount_ml: ml }));
+      // container_id null = default container (~250ml per drink)
+      const drinks = amount ? Math.round(amount / 250) || 1 : 1;
+      return toContent(await sparkyRequest("POST", "/measurements/water-intake", {
+        entry_date: d,
+        change_drinks: drinks,
+        container_id: null,
+      }));
     }
 
     if (action === "weight") {
       if (weight_kg !== undefined) {
-        return toContent(await sparkyRequest("POST", "/weight", { date: d, weight_kg }));
+        return toContent(await sparkyRequest("POST", "/measurements/check-in", { entry_date: d, weight: weight_kg }));
       }
-      return toContent(await sparkyRequest("GET", `/weight?date=${d}`));
+      return toContent(await sparkyRequest("GET", `/measurements/check-in/${d}`));
     }
 
     if (action === "sleep") {
-      return toContent(await sparkyRequest("GET", `/sleep?date=${d}`));
+      return toContent(await sparkyRequest("GET", `/sleep?startDate=${d}&endDate=${d}`));
     }
 
     return { content: [{ type: "text", text: `Unknown sparky_fitness action: ${action}` }], isError: true };
