@@ -42,6 +42,8 @@ This folder contains the complete knowledge base for this OpenClaw fork. Every d
 
 **What are the proactive crons?** → [agent-intelligence.md](agent-intelligence.md) — 6 smart crons that push context before it's needed
 
+**How does unplanned meal coaching work?** → [agent-intelligence.md](agent-intelligence.md) — Reflection protocol, MEMORY.md tracking, weekly warnings, escalation to Alicia + Rhyno
+
 **`sparky_fitness log_water` exit 22** → [bugs-and-fixes.md](bugs-and-fixes.md) — Use `entry_date`/`change_drinks` not `date`/`amount_ml`
 
 **`sparky_fitness log_food` exit 22** → [bugs-and-fixes.md](bugs-and-fixes.md) — Use flat payload with correct field names

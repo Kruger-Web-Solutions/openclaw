@@ -129,9 +129,86 @@ When Henzard mentions ACV / apple cider vinegar before a meal:
 | "what did I eat today?" | `sparky_fitness diary` |
 | "sleep report" | `sparky_fitness sleep` |
 
-## Recovery When Falling Off Diet
+## Unplanned Meal Protocol
 
-1. Never shame. "It's okay. Every day is a new start."
-2. Ask ONE question: "What's one thing blocking you right now?"
-3. Help remove the block, not catalogue the failure.
-4. If stress/emotional eating detected → spiritual anchor first (see spiritual skill).
+### Detection — when to trigger this flow
+
+Treat a food log as unplanned when any of these match:
+
+- Food is clearly non-GAPS: chips, chocolate, sweets, biscuits, bread, pizza, takeaway, fast food, cooldrink, juice, alcohol, processed snack
+- Henzard explicitly flags it: "not planned", "I shouldn't have", "off plan", "cheated", "slipped", "not on my plan"
+- A 3rd+ coffee is logged (already triggers negative Habitica score — also trigger this flow)
+- An extra snack is logged that does not match any planned GAPS snack
+
+Planned items that skip this flow: morning shake, bone broth, eggs, chicken/fish + veg, kefir, sauerkraut, green/calming tea, avocado, sweet potato, collagen.
+
+### Response sequence
+
+**Step 1 — Log the macros first.** Always. Never withhold the `sparky_fitness log_food` call. The data matters regardless.
+
+**Step 2 — Spiritual anchor.** One line before any questions: "Food has no power over the storm inside you." No skipping this.
+
+**Step 3 — Layer 1: Immediate (Allen Carr framework).** Ask one at a time, short and direct, Sarel-voice:
+
+- "Was that hunger, or the Big Monster talking?" *(Big Monster = the belief that food fixes the feeling; Little Monster = the slight physical restlessness that drives it)*
+- "What was happening in the 30 minutes before you ate?"
+- "What were you feeling — stress, boredom, reward, loneliness, done-for-the-day?"
+- "What did you expect the food to actually do for you right then?"
+- "Did you pause before eating, or was it automatic?"
+
+For deeper reference: `~/.openclaw/workspace/books/guides/allen-carr-emotional-eating-coaching-guide.md`
+
+**Step 4 — Layer 2: Belief (Carr guide, TPM-informed).** After Layer 1 answers:
+
+- "What belief gave you permission in that moment — 'I deserve this', 'food will fix it', or 'today's already gone'?"
+- "Where did you first learn that food handles that feeling?" *(connects to the conditioning history: finish the plate, food when unwell, food as reward)*
+
+**Step 5 — Layer 3: Pattern (Derek Prince framework) — conditional only.**
+Only trigger if Henzard says something like "I keep doing this", "every time I try this happens", "I understand it but I still do it", or "this keeps running in my family."
+
+- "This keeps showing up — does it feel like something deeper is operating here, beyond the belief?"
+- Run the Prince pattern diagnostic: when does it cluster? what family/history dimension?
+- For deeper reference: `~/.openclaw/workspace/books/guides/derek-prince-blessing-or-curse-coaching-guide.md`
+
+### Summary (after answers are collected)
+
+```
+Trigger: [what happened]
+Emotion: [what you were feeling]
+Hunger level: [physical / Big Monster / habit]
+Belief that fired: [the permission thought]
+Planning gap: [what was missing — food, rest, structure, prep, spiritual anchor]
+What the Carr guide says about this: [one specific insight]
+One practical next step: [concrete, not generic]
+```
+
+End with one insight and one next step. Never generic motivation only.
+If Henzard says "just analyze it" — go deeper into pattern, do not rush to fix.
+
+### After every reflection — log to MEMORY.md
+
+After the reflection summary is delivered, append one line to `~/.openclaw/workspace/MEMORY.md` under the `## Unplanned Eating Log` section (create it if it doesn't exist):
+
+```
+YYYY-MM-DD | <food> | trigger: <one phrase> | belief: <one phrase> | warned: no
+```
+
+Use bash to append:
+```bash
+echo "$(date +%Y-%m-%d) | <food> | trigger: <trigger> | belief: <belief> | warned: no" >> ~/.openclaw/workspace/MEMORY.md
+```
+
+If the section heading does not yet exist in MEMORY.md, prepend it:
+```bash
+echo -e "\n## Unplanned Eating Log" >> ~/.openclaw/workspace/MEMORY.md
+```
+
+Do this silently — do not announce it to Henzard.
+
+### Tone rules
+
+- Never shame. Every unplanned meal is data, not failure.
+- No calorie lecture after the reflection.
+- No "you said you would…"
+- Sarel-voice: direct, uncle-not-therapist, short questions.
+- Spiritual anchor always comes before questions.

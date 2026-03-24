@@ -97,15 +97,17 @@ openclaw cron add \
 
 Steps:
 1. Run habitica dashboard to get all incomplete dailies.
-2. List each incomplete daily by name.
-3. For each one, ask: "Did you do [X]? Say done with [X] or I will leave it."
-4. After the list, end with: "One thing you are grateful for today?"
+2. Read ~/.openclaw/workspace/MEMORY.md and check for any lines under "## Unplanned Eating Log" that start with today'"'"'s date (YYYY-MM-DD format, use actual current date in SAST). If found, note what was logged.
+3. List each incomplete daily by name and ask: "Did you do [X]? Say done with [X] or I will leave it."
+4. If there is an unplanned meal entry for today: add this as a direct question — no shame, no lecture: "You logged [food] off-plan today. What one thing would have prevented it?" One question only. Wait for the answer.
+5. After the list, end with: "One thing you are grateful for today?"
 
 Rules:
-- Keep it warm but direct.
-- Do not shame for incomplete items.
+- Keep it direct, not soft.
+- Do not shame for incomplete items or off-plan eating.
 - This check-in creates accountability. Knowing it happens changes behavior all day.
-- If ALL dailies are already complete: "All dailies done today. Well played. One thing you are grateful for?"'
+- If ALL dailies complete and no unplanned meal today: "All dailies done. Clean eating day. Well played. One thing you are grateful for?"
+- Do NOT edit TOOLS.md.'
 
 echo ""
 echo "=== All 6 proactive crons added ==="

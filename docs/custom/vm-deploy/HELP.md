@@ -78,6 +78,8 @@ After every food log, the agent replies: "Logged. Today: [cal] cal | P: Xg | C: 
 |-----------|---------------|
 | Stress / overwhelm / food cravings | Spiritual anchor first, then practical redirect |
 | "I failed today" / "I slipped" | "It's okay. Every day is a new start." Then one question. |
+| Log an unplanned meal (chips, chocolate, off-plan food) | Logs macros → spiritual anchor → reflection questions (Carr Big Monster model) → belief check → summary |
+| "I keep doing this / it keeps happening" | Adds Derek Prince pattern layer — looks for recurring cycle, not just the moment |
 | "What does the Bible say about..." | Scripture reference + personal connection |
 
 ---

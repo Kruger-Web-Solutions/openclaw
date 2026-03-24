@@ -103,6 +103,42 @@ When user says "I failed" / "I'm useless" / "I can't do this":
 
 ---
 
+## Unplanned Meal Protocol (Phase 4)
+
+When Henzard logs an off-plan meal (chips, chocolate, non-GAPS food) or flags one explicitly ("not planned", "I slipped"), the agent runs a structured reflection rather than just logging and moving on.
+
+### Detection signals
+- Non-GAPS food in the description (chips, chocolate, takeaway, bread, alcohol, etc.)
+- Explicit flags: "not planned", "off plan", "cheated", "slipped"
+- 3rd+ coffee in a day
+
+### Response sequence
+1. Log macros anyway — data always matters
+2. Spiritual anchor: "Food has no power over the storm inside you."
+3. Layer 1 — Allen Carr framework (always): Big Monster / Little Monster, trigger, emotion, expectation
+4. Layer 2 — Belief layer (TPM-informed, Carr guide): the permission thought, childhood conditioning roots
+5. Layer 3 — Derek Prince framework (conditional): only if Henzard signals a repeating cycle ("I keep doing this", "it keeps happening")
+
+Full skill: `docs/custom/vm-deploy/skills/health-coach/SKILL.md`
+Book guides: `~/.openclaw/workspace/books/guides/` on VM
+
+### Pattern tracking and accountability escalation
+
+After every reflection, Sarel silently appends a log entry to `~/.openclaw/workspace/MEMORY.md` under `## Unplanned Eating Log`:
+```
+YYYY-MM-DD | <food> | trigger: <phrase> | belief: <phrase> | warned: no
+```
+
+Accountability fires at three levels:
+
+| Trigger | What fires |
+|---|---|
+| Same day (EOD 21:15) | EOD reconciliation cron reads today's entry, asks one direct question |
+| End of week (Sunday 20:00) | State-of-me report counts the week. 2 entries = brief mention. 3+ = stern warning + structural fix |
+| After 3 stern warnings in consecutive weeks | Sarel tells Henzard first, then messages Alicia and Rhyno |
+
+Warning count tracked under `## Accountability Warnings` in `MEMORY.md`. Escalation requires: 3+ warnings AND 2 consecutive weeks with 3+ unplanned meals with no improvement.
+
 ## Macro Estimation Protocol
 
 **Problem:** SparkyFitness has no food database. It stores whatever you send. Zero macros = useless tracking.
