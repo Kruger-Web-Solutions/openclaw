@@ -50,7 +50,7 @@ Write-Host "  Phase 2 complete" -ForegroundColor Green
 # ─── Phase 3: Sparky prep (Docker + download) ────────────────────────────────
 
 Write-Host "`n[3] Preparing SparkyFitness..." -ForegroundColor Cyan
-scp -i $sshKey "$repoRoot\docs\custom\vm-deploy\phase3-sparky-setup.sh" "${vm}:/tmp/oc-phase3.sh"
+scp -i $sshKey "$repoRoot\docs\custom\vm-deploy\phase3b-sparky-start.sh" "${vm}:/tmp/oc-phase3.sh"
 ssh -i $sshKey $vm "bash /tmp/oc-phase3.sh && rm /tmp/oc-phase3.sh"
 Write-Host "  Phase 3 prep complete" -ForegroundColor Green
 Write-Host "  ACTION REQUIRED: SSH to VM, edit ~/sparky/.env, then run 'cd ~/sparky && docker compose up -d'" -ForegroundColor Yellow

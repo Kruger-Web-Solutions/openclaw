@@ -31,12 +31,12 @@ A **Model Context Protocol (MCP) server** that lets Cursor (or any MCP-compatibl
 
 | Capability | Tools |
 |---|---|
-| WhatsApp | `whatsapp_status`, `whatsapp_contacts`, `whatsapp_send`, `whatsapp_poll`, `whatsapp_react`, `whatsapp_archive` |
+| WhatsApp | `message` (gateway core), `wa_archive` (shell script in ~/bin/), `whatsapp_status` (if available) |
 | Habitica | `habitica` (dashboard / dailies / habits / todos / stats / complete / create_todo / score_habit) |
 | Todoist | `todoist_tasks`, `todoist_projects`, `todoist_labels`, `todoist_sections` |
 | Cron | `cron` |
 | SparkyFitness | `sparky_fitness` (diary / log_food / log_water / goals / weight / summary / sleep) |
-| Gateway | `gateway_health` |
+| Gateway | `message` (core tool for sending) |
 
 **Total: 14 tools.**
 
@@ -57,10 +57,10 @@ node --no-warnings tools/openclaw-mcp-server.mjs   ← runs ON the VM
   │     used by: contacts, cron
   │
   ├── HTTP → localhost:18789        OpenClaw Gateway
-  │     used by: whatsapp_send, whatsapp_poll, whatsapp_react, habitica, gateway_health
+  │     used by: message (core tool), habitica (plugin tool)
   │
   ├── node:sqlite (direct read)     ~/.openclaw/whatsapp/archive.sqlite
-  │     used by: whatsapp_archive
+  │     used by: wa_archive (shell script)
   │
   ├── fs.readFileSync               ~/.openclaw/credentials/whatsapp/<account>/creds.json
   │     used by: whatsapp_status
@@ -126,7 +126,7 @@ These were the requirements gathered before implementation:
 
 ### Explicitly out of scope
 
-- Incoming message notifications / push (MCP is request-response only; use `whatsapp_archive` to poll)
+- Incoming message notifications / push (MCP is request-response only; use `wa_archive` to poll)
 - Multi-account selection at runtime (account is fixed per MCP server instance via `openclaw.json`)
 
 ---
@@ -135,7 +135,7 @@ These were the requirements gathered before implementation:
 
 ### Why it was needed
 
-The AI can call `whatsapp_send` in a loop (e.g. broadcasting to multiple groups). WhatsApp will ban numbers that send too fast. This needed to be in the **extension layer**, not the MCP server, so it protects all send paths — auto-reply, agent tools, and MCP.
+The AI can call `message` in a loop (e.g. broadcasting to multiple groups). WhatsApp will ban numbers that send too fast. Rate limiting lives in the **extension layer**, not the MCP server, so it protects all send paths — auto-reply, agent tools, and MCP.
 
 ### Files changed
 
@@ -237,7 +237,7 @@ Always use this instead of bare `fetch`. The gateway can hang connections.
 
 #### `invokeGatewayTool(tool, params)` — POST to `/tools/invoke`
 
-Used for `whatsapp_send`, `whatsapp_poll`, `whatsapp_react`, `habitica`. These go via HTTP because the CLI's WebSocket connection to the gateway is unreliable in non-interactive SSH sessions (see bug log §8.3).
+Used for `habitica` (plugin tool). These go via HTTP because the CLI's WebSocket connection to the gateway is unreliable in non-interactive SSH sessions (see bug log §8.3). For sending messages, use the `message` gateway core tool.
 
 **Gateway prerequisite:** The gateway must have `message` in its tool allowlist or the call will return `"Tool not available: message"`. The `coding` profile does not include it by default:
 
@@ -267,14 +267,14 @@ function toContent(result) {
 
 | Tool | Implementation | Reason |
 |---|---|---|
-| `whatsapp_send/poll/react` | HTTP `POST /tools/invoke` | CLI WebSocket unreliable in SSH session |
+| `message` | Gateway core tool | Send WhatsApp messages |
 | `whatsapp_contacts` | CLI `openclaw directory peers list` | No HTTP equivalent |
 | `whatsapp_status` | Direct file read + HTTP `/health` | CLI `channels status` takes ~28s (Ollama model scan timeout) |
-| `whatsapp_archive` | `node:sqlite` direct read | Fastest; avoids CLI entirely |
+| `wa_archive` | Shell script, `node:sqlite` direct read | Fastest; avoids CLI entirely |
 | `habitica` | HTTP `POST /tools/invoke` | Native gateway tool |
 | `todoist_*` | Direct HTTPS to `api.todoist.com` | External API, no gateway involvement |
 | `cron` | CLI `openclaw cron *` | No HTTP equivalent |
-| `gateway_health` | HTTP `GET /health` | Gateway exposes this directly |
+| `cron` | CLI `openclaw cron *` | No HTTP equivalent |
 
 ### `whatsapp_status` — why we rewrote it
 
@@ -492,7 +492,7 @@ This is the full history of issues encountered and how they were resolved. Read 
 
 **Cause:** The CLI uses a WebSocket connection to the gateway. In an SSH session, the process has no controlling terminal and the WebSocket handshake/keepalive behaves differently. The connection drops before the command completes.
 
-**Fix:** Route `whatsapp_send`, `whatsapp_poll`, `whatsapp_react` through HTTP `POST /tools/invoke` instead of the CLI.
+**Fix:** Use `message` core tool for sending. Route plugin tools through HTTP `POST /tools/invoke` instead of CLI.
 
 **Prerequisite:** The gateway's tool policy must allow the `message` tool:
 ```json
@@ -579,7 +579,7 @@ if store.get("section_id"):
 
 ### 8.11 Gateway blocked `message` tool — "Tool not available: message"
 
-**Symptom:** `whatsapp_send` returns `{ ok: false, error: "Tool not available: message" }` even though the gateway is up and healthy.
+**Symptom:** Tool returns `{ ok: false, error: "Tool not available: message" }` even though the gateway is up and healthy.
 
 **Cause:** The gateway `tools.profile: "coding"` profile does not include the `message` tool by default. `POST /tools/invoke` with `tool: "message"` returns a 403-equivalent error.
 
@@ -634,7 +634,7 @@ ssh -i $sshKey henzard@192.168.122.82 "source ~/.profile && openclaw directory p
 
 - **Run the MCP server on the VM, not locally.** The CLI is only on the VM. Trying to tunnel everything via SSH from a local server adds complexity and failure modes with no benefit. We tried local with SSH helpers — it failed on WebSocket drops, tool allowlist blocks, and module resolution. Moving to VM fixed all three at once.
 - **Use HTTP for gateway-native tools, CLI for everything else.** The gateway's WebSocket-based CLI commands are fragile in non-interactive SSH sessions. The REST API (`/tools/invoke`) is reliable.
-- **Direct file/SQLite reads beat the CLI for frequently-called, latency-sensitive tools.** `whatsapp_status` and `whatsapp_archive` are both faster and more reliable reading files directly.
+- **Direct file/SQLite reads beat the CLI for frequently-called, latency-sensitive tools.** `whatsapp_status` and `wa_archive` are both faster and more reliable reading files directly.
 - **One tool per resource type, not one tool per concept.** A single "todoist" tool with 20 actions is hard for the AI to use correctly. Four focused tools with 5–9 actions each are better.
 - **Don't tolerate a slow CLI call — replace it.** `runCLILenient` with a generous timeout still timed out. The right fix was to bypass the CLI entirely.
 

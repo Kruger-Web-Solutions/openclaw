@@ -1,0 +1,212 @@
+#!/usr/bin/env node
+
+// WhatsApp Archive Query Tool
+// Usage: wa_archive <action> [options]
+//   today [group]           — today's messages (optionally filtered by group short name)
+//   yesterday [group]       — yesterday's messages
+//   recent [group] [limit]  — recent messages (default 50)
+//   search <query> [limit]  — full-text search across all messages
+//   groups                  — list all groups in the archive
+//   date <YYYY-MM-DD> [group] — messages from a specific date
+
+import { DatabaseSync } from 'node:sqlite';
+import { existsSync } from 'node:fs';
+
+const DB_PATH = process.env.WA_ARCHIVE_DB || `${process.env.HOME}/.openclaw/whatsapp/archive.sqlite`;
+const TZ_OFFSET = '+2 hours'; // SAST
+const TZ_OFFSET_MS = 2 * 3600 * 1000;
+
+function localToday() {
+  return new Date(Date.now() + TZ_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function localYesterday() {
+  return new Date(Date.now() + TZ_OFFSET_MS - 86400000).toISOString().slice(0, 10);
+}
+
+// Replace with actual WhatsApp group JIDs after deployment.
+// Find JIDs by running: wa_archive groups
+const GROUP_REGISTRY = {
+  'weighsoft':  'WEIGHSOFT_GROUP_JID',
+  'notes':      'NOTES_GROUP_JID',
+};
+
+function resolveGroup(name) {
+  if (!name) return null;
+  const lower = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  for (const [key, jid] of Object.entries(GROUP_REGISTRY)) {
+    if (lower.includes(key) || key.includes(lower)) return jid;
+  }
+  if (name.includes('@g.us')) return name;
+  return null;
+}
+
+function openDb() {
+  if (!existsSync(DB_PATH)) {
+    console.error(`Archive database not found: ${DB_PATH}`);
+    process.exit(1);
+  }
+  return new DatabaseSync(DB_PATH);
+}
+
+function extractPushName(rawJson) {
+  if (!rawJson) return null;
+  try {
+    const raw = JSON.parse(rawJson);
+    return raw.pushName || null;
+  } catch {
+    return null;
+  }
+}
+
+function formatMessages(msgs) {
+  if (!msgs.length) {
+    console.log('No messages found.');
+    return;
+  }
+  console.log(`${msgs.length} message(s):\n`);
+  for (const m of msgs) {
+    const pushName = extractPushName(m.raw_json);
+    const from = m.direction === 'outgoing' ? 'Bot' : (pushName || m.sender || '?');
+    const body = (m.body || '').replace(/\n/g, ' ').trim();
+    if (!body && !m.has_media) continue;
+    const media = m.has_media ? ' [media]' : '';
+    console.log(`${m.ts} | ${from}: ${body}${media}`);
+  }
+}
+
+function queryMessages(db, { dateFilter, groupJid, limit, searchTerm }) {
+  const conditions = ['1=1'];
+  const params = [];
+
+  if (dateFilter) {
+    conditions.push(`date(timestamp/1000, 'unixepoch') = ?`);
+    params.push(dateFilter);
+  }
+
+  if (groupJid) {
+    conditions.push(`is_group = 1 AND group_id = ?`);
+    params.push(groupJid);
+  }
+
+  if (searchTerm) {
+    conditions.push(`body LIKE ?`);
+    params.push(`%${searchTerm}%`);
+  }
+
+  const sql = `
+    SELECT datetime(timestamp/1000, 'unixepoch', '${TZ_OFFSET}') as ts,
+           direction, sender, body, raw_json,
+           CASE WHEN media_type IS NOT NULL AND media_type != '' THEN 1 ELSE 0 END as has_media,
+           group_id
+    FROM whatsapp_messages 
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY timestamp ASC
+    LIMIT ?
+  `;
+  params.push(limit || 200);
+
+  return db.prepare(sql).all(...params);
+}
+
+function listGroups(db) {
+  const rows = db.prepare(`
+    SELECT group_id, COUNT(*) as msg_count,
+           MIN(datetime(timestamp/1000, 'unixepoch', '${TZ_OFFSET}')) as first_msg,
+           MAX(datetime(timestamp/1000, 'unixepoch', '${TZ_OFFSET}')) as last_msg
+    FROM whatsapp_messages
+    WHERE is_group = 1 AND group_id IS NOT NULL
+    GROUP BY group_id
+    ORDER BY msg_count DESC
+  `).all();
+
+  console.log('Groups in archive:\n');
+  for (const r of rows) {
+    const name = Object.entries(GROUP_REGISTRY).find(([, jid]) => jid === r.group_id)?.[0] || '(unknown)';
+    console.log(`  ${name} — ${r.group_id}`);
+    console.log(`    Messages: ${r.msg_count} | First: ${r.first_msg} | Last: ${r.last_msg}`);
+  }
+}
+
+// --- Main ---
+const [,, action, ...rest] = process.argv;
+
+if (!action || action === 'help' || action === '--help') {
+  console.log(`wa_archive — WhatsApp Archive Query Tool
+
+Usage:
+  wa_archive today [group]              Today's messages
+  wa_archive yesterday [group]          Yesterday's messages
+  wa_archive date <YYYY-MM-DD> [group]  Messages from specific date
+  wa_archive recent [group] [limit]     Recent messages (default 50)
+  wa_archive search <query> [limit]     Search messages by text
+  wa_archive groups                     List all groups in archive
+
+Groups: ${Object.keys(GROUP_REGISTRY).join(', ')} (or pass a JID directly)`);
+  process.exit(0);
+}
+
+const db = openDb();
+
+try {
+  switch (action) {
+    case 'today': {
+      const groupJid = resolveGroup(rest[0]);
+      const today = localToday();
+      console.log(`Messages for today (${today})${groupJid ? ` in ${rest[0]}` : ''}:\n`);
+      formatMessages(queryMessages(db, { dateFilter: today, groupJid }));
+      break;
+    }
+
+    case 'yesterday': {
+      const groupJid = resolveGroup(rest[0]);
+      const yesterday = localYesterday();
+      console.log(`Messages for yesterday (${yesterday})${groupJid ? ` in ${rest[0]}` : ''}:\n`);
+      formatMessages(queryMessages(db, { dateFilter: yesterday, groupJid }));
+      break;
+    }
+
+    case 'date': {
+      const dateStr = rest[0];
+      if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        console.error('Usage: wa_archive date <YYYY-MM-DD> [group]');
+        process.exit(1);
+      }
+      const groupJid = resolveGroup(rest[1]);
+      console.log(`Messages for ${dateStr}${groupJid ? ` in ${rest[1]}` : ''}:\n`);
+      formatMessages(queryMessages(db, { dateFilter: dateStr, groupJid }));
+      break;
+    }
+
+    case 'recent': {
+      const groupJid = resolveGroup(rest[0]);
+      const limit = parseInt(rest[groupJid ? 1 : 0]) || 50;
+      console.log(`Recent messages${groupJid ? ` in ${rest[0]}` : ''} (limit ${limit}):\n`);
+      formatMessages(queryMessages(db, { groupJid, limit }));
+      break;
+    }
+
+    case 'search': {
+      const query = rest[0];
+      if (!query) {
+        console.error('Usage: wa_archive search <query> [limit]');
+        process.exit(1);
+      }
+      const limit = parseInt(rest[1]) || 50;
+      console.log(`Search results for "${query}" (limit ${limit}):\n`);
+      formatMessages(queryMessages(db, { searchTerm: query, limit }));
+      break;
+    }
+
+    case 'groups': {
+      listGroups(db);
+      break;
+    }
+
+    default:
+      console.error(`Unknown action: ${action}. Run 'wa_archive help' for usage.`);
+      process.exit(1);
+  }
+} finally {
+  db.close();
+}

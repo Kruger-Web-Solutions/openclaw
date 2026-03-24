@@ -46,7 +46,7 @@ add "water-bottle-1" \
 add "daily-briefing" \
   --name "daily-briefing" --cron "30 6 * * 1-5" --tz "$TZ_SAST" \
   --session isolated --announce --channel whatsapp --to "$TO" \
-  --message "Generate the morning briefing for Henzard. Steps: 1. Use todoist_tasks list with label=in-progress to get VIP tasks. 2. Use habitica todos to get current Habitica todo list. 3. For each Todoist in-progress task whose notes do NOT contain todoist:<task_id> in any Habitica todo: call habitica create_todo with title=[task content], notes=todoist:<task_id>, task_type=todo. 4. Use habitica dashboard for dailies overview. Use sparky_fitness goals for macro targets. Format this message: GOOD MORNING HENZARD — [Day] [Date] ━━━━━━━━━━━━━━━━━━━ YESTERDAY: [X/Y dailies] completed TODAY VIP TASKS (in-progress): [list up to 5] ━━━━━━━━━━━━━━━━━━━ SCHEDULE: [Mon=Weighsoft 7:30|Tue=Bot work|Wed=Weighsoft|Thu=Bot work|Fri=Weighsoft] FAITH: Bible Day [N] — open YouVersion Chronological HEALTH: Target [X]cal | [X]g protein today ━━━━━━━━━━━━━━━━━━━ Jesus is your source of peace — not productivity, not food, not any other thing."
+  --message "Generate the morning briefing for Henzard. Steps: 1. Use todoist_tasks list with label=in-progress to get VIP tasks. 2. Use habitica dashboard for dailies overview. 3. Use sparky_fitness goals for macro targets. Format this message: GOOD MORNING HENZARD — [Day] [Date] ━━━━━━━━━━━━━━━━━━━ YESTERDAY: [X/Y dailies] completed TODAY VIP TASKS (in-progress): [list up to 5] ━━━━━━━━━━━━━━━━━━━ SCHEDULE: [Mon=Weighsoft 7:30|Tue=Bot work|Wed=Weighsoft|Thu=Bot work|Fri=Weighsoft] FAITH: Bible Day [N] — open YouVersion Chronological HEALTH: Target [X]cal | [X]g protein today ━━━━━━━━━━━━━━━━━━━ Jesus is your source of peace — not productivity, not food, not any other thing."
 
 add "weekly-intentions-monday" \
   --name "weekly-intentions-monday" --cron "35 6 * * 1" --tz "$TZ_SAST" \
@@ -138,14 +138,14 @@ add "sleep-prep" \
 add "accountability-audit" \
   --name "accountability-audit" --cron "30 18 * * 1-5" --tz "$TZ_SAST" \
   --session isolated --announce --channel whatsapp --to "$TO" \
-  --message "Run accountability audit. Use habitica dailies to count incomplete dailies. Use whatsapp_archive to check last inbound message time from Henzard. If 3 or more dailies are incomplete AND no inbound message in last 3 hours: use whatsapp_send to message Alicia at $ALICIA_WA: 'Hey Alicia, just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' And whatsapp_send to Rhyno at $RHYNO_WA: 'Hey Rhyno, just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' Then summarize what action was taken."
+  --message "Run accountability audit. Use habitica dailies to count incomplete dailies. Use wa_archive today to check last inbound message time from Henzard. If 3 or more dailies are incomplete AND no inbound message in last 3 hours: use the message tool (action: send, channel: whatsapp) to send to Alicia (see contacts.env for number): 'Hey Alicia, just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' And send to Rhyno (see contacts.env): 'Hey Rhyno, just a gentle nudge — Henzard might need some encouragement today. No pressure, just a heads-up.' Then summarize what action was taken."
 
 # ── FRIDAY CRONS ─────────────────────────────────────────────────────────────
 
 add "friday-week-close" \
   --name "friday-week-close" --cron "0 16 * * 5" --tz "$TZ_SAST" \
   --session isolated --announce --channel whatsapp --to "$TO" \
-  --message "It is Friday. Use todoist_tasks list for all projects to review unfinished tasks. Send a week summary: count of tasks closed this week across Nedbank, Weighsoft, Home, Personal Growth. Then ask: 'What are 3 wins from this week?'"
+  --message "It is Friday. Use todoist_tasks list for all projects to review unfinished tasks. Send a week summary: count of tasks closed this week across Nedbank, Weighsoft, Home, Books to Read. Then ask: 'What are 3 wins from this week?'"
 
 add "nagmal" \
   --name "nagmal" --cron "0 18 * * 5" --tz "$TZ_SAST" \
@@ -199,7 +199,7 @@ add "alicia-bday" \
 add "kealyn-bday-14days" \
   --name "kealyn-bday-14days" --cron "0 8 18 7 *" --tz "$TZ_SAST" \
   --session isolated --announce --channel whatsapp --to "$TO" \
-  --message "Kealyn birthday is in 2 weeks (August 1): 'Start planning. What adventure or special day would light up his world?'"
+  --message "Kealyn birthday is in 2 weeks (August 1): 'Start planning. What adventure or special day would light up her world?'"
 
 add "kealyn-bday-7days" \
   --name "kealyn-bday-7days" --cron "0 8 25 7 *" --tz "$TZ_SAST" \
@@ -209,7 +209,7 @@ add "kealyn-bday-7days" \
 add "kealyn-bday" \
   --name "kealyn-bday" --cron "0 7 1 8 *" --tz "$TZ_SAST" \
   --session isolated --announce --channel whatsapp --to "$TO" \
-  --message "Today is Kealyn birthday! 'Be fully present with him today. No work focus until 10am. Make memories that last.'"
+  --message "Today is Kealyn birthday! 'Be fully present with her today. No work focus until 10am. Make memories that last.'"
 
 # ── SACRED CALENDAR — FEASTS 2026 ────────────────────────────────────────────
 

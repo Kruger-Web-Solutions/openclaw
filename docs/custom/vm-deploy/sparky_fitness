@@ -35,26 +35,30 @@ case "$ACTION" in
     STATS=$(cat "$TMP")
     _get "/goals/by-date/$TODAY" 2>/dev/null || echo "{}" > "$TMP"
     GOALS=$(cat "$TMP")
+    _get "/measurements/water-intake/$TODAY" 2>/dev/null || echo "{}" > "$TMP"
+    WATER=$(cat "$TMP")
     python3 -c "
 import json, sys
 stats = json.loads(sys.argv[1])
 goals = json.loads(sys.argv[2])
-cal   = stats.get('totalCalories') or stats.get('calories') or 0
+water_data = json.loads(sys.argv[3])
+cal   = stats.get('eaten') or stats.get('totalCalories') or stats.get('calories') or 0
 prot  = stats.get('totalProtein')  or stats.get('protein')  or 0
 carb  = stats.get('totalCarbs')    or stats.get('carbs')    or 0
 fat   = stats.get('totalFat')      or stats.get('fat')      or 0
-water = stats.get('totalWater')    or stats.get('water')    or 0
+water = water_data.get('water_ml') or 0
 gcal  = goals.get('calories') or 0
 gprot = goals.get('protein')  or 0
 gcarb = goals.get('carbs')    or 0
 gfat  = goals.get('fat')      or 0
+gwater = goals.get('water_goal_ml') or 0
 print(f'Macros for $TODAY:')
 print(f'  Calories: {float(cal):.0f} / {float(gcal):.0f} kcal')
 print(f'  Protein:  {float(prot):.1f} / {float(gprot):.1f}g')
 print(f'  Carbs:    {float(carb):.1f} / {float(gcarb):.1f}g')
 print(f'  Fat:      {float(fat):.1f} / {float(gfat):.1f}g')
-print(f'  Water:    {float(water):.0f} ml')
-" "$STATS" "$GOALS"
+print(f'  Water:    {float(water):.0f} / {float(gwater):.0f} ml')
+" "$STATS" "$GOALS" "$WATER"
     ;;
 
   diary)
@@ -88,8 +92,9 @@ print(f'  Fat:      {float(g.get(\"fat\",0)):.1f}g')
 
   log_water)
     ML="${2:-250}"
-    _post "/measurements/water-intake" "{\"date\":\"$TODAY\",\"amount_ml\":$ML}"
-    echo "Logged ${ML}ml water for $TODAY."
+    DRINKS=$(python3 -c "print(max(1, round($ML / 250)))")
+    _post "/measurements/water-intake" "{\"entry_date\":\"$TODAY\",\"change_drinks\":$DRINKS,\"container_id\":null}"
+    echo "Logged ${ML}ml (~${DRINKS} drinks) water for $TODAY."
     ;;
 
   weight)
@@ -130,14 +135,15 @@ else:
     CARB="${7:-0}"
     FAT="${8:-0}"
     [[ "$MEAL" == "snack" ]] && MEAL="snacks"
-    FOOD_BODY=$(python3 -c "import json,sys; print(json.dumps({'name':sys.argv[1],'calories_per_100g':float(sys.argv[2]),'protein_per_100g':float(sys.argv[3]),'carbs_per_100g':float(sys.argv[4]),'fat_per_100g':float(sys.argv[5])}))" "$FOOD_NAME" "$CAL" "$PROT" "$CARB" "$FAT")
+    FOOD_BODY=$(python3 -c "import json,sys; print(json.dumps({'name':sys.argv[1],'is_custom':True,'serving_size':float(sys.argv[6]),'serving_unit':'g','calories':float(sys.argv[2]),'protein':float(sys.argv[3]),'carbs':float(sys.argv[4]),'fat':float(sys.argv[5])}))" "$FOOD_NAME" "$CAL" "$PROT" "$CARB" "$FAT" "$GRAMS")
     _post "/foods" "$FOOD_BODY"
     FOOD_ID=$(python3 -c "import json; print(json.load(open('$TMP')).get('id',''))")
+    VARIANT_ID=$(python3 -c "import json; d=json.load(open('$TMP')); v=d.get('default_variant') or {}; print(v.get('id',''))")
     if [ -z "$FOOD_ID" ]; then
       echo "ERROR: Could not create food item '$FOOD_NAME'."
       exit 1
     fi
-    ENTRY_BODY=$(python3 -c "import json,sys; print(json.dumps({'food_id':sys.argv[1],'meal_type':sys.argv[2],'amount_grams':float(sys.argv[3]),'date':sys.argv[4]}))" "$FOOD_ID" "$MEAL" "$GRAMS" "$TODAY")
+    ENTRY_BODY=$(python3 -c "import json,sys; d={'food_id':sys.argv[1],'entry_date':sys.argv[4],'meal_type':sys.argv[2],'quantity':float(sys.argv[3]),'unit':'g'}; v=sys.argv[5]; d['variant_id']=v if v else None; print(json.dumps(d))" "$FOOD_ID" "$MEAL" "$GRAMS" "$TODAY" "$VARIANT_ID")
     _post "/food-entries" "$ENTRY_BODY"
     echo "Logged ${GRAMS}g of $FOOD_NAME ($MEAL) for $TODAY."
     ;;

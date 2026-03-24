@@ -537,7 +537,7 @@ kill $MCP_PID 2>/dev/null
 
 # Count registered tools
 grep -c "server.tool(" tools/openclaw-mcp-server.mjs
-# Should be 13
+# Should be 14
 ```
 
 ### Verify archive is working
@@ -756,5 +756,5 @@ systemctl --user edit openclaw-gateway.service
 | Cursor shows "No tools, prompts or resources" | `z.record(z.unknown())` in schema | Use `z.record(z.string(), z.any())` |
 | `model at capacity` (grok) | Transient OpenRouter capacity | Add `fallbacks` in config — auto-retries |
 | `sudo npm i -g .` puts binary in wrong place | Root's npm prefix, not user's | Drop `sudo` — use `npm i -g .` only |
-| Agent uses `~/bin/habitica` not native tool | `TOOLS.md` outdated or wrong allowlist | Update TOOLS.md; use `tools.alsoAllow: ["group:plugins"]` |
+| Agent uses wrong tool name | `TOOLS.md` outdated | Update TOOLS.md tool inventory; native `habitica` plugin + shell scripts via exec |
 | Memory Synthesis overwrote TOOLS.md | Synthesis prompt didn't forbid it | Add "Do NOT edit TOOLS.md" to synthesis cron prompt |

@@ -7,7 +7,7 @@ This document helps **Cursor** (and operators) **optimize already-running OpenCl
 ## When to use this
 
 - **After installing** an updated OpenClaw build (e.g. from this fork or a new upstream release).
-- **When the agent** uses `exec` or shell scripts instead of native tools (e.g. `habitica`, `whatsapp_archive`).
+- **When the agent** uses `exec` or shell scripts instead of native tools (e.g. `habitica`, `wa_archive`).
 - **When you see** "unknown entries" in tool allowlist warnings, config invalid, or gateway/cron misbehavior.
 - **When adding** new plugins or channels and you want config and agent behavior to stay correct.
 
@@ -30,7 +30,7 @@ Run these after deploying a new build:
 
 ## 2. Tool policy: so the agent uses native tools
 
-If the agent falls back to `exec` or shell wrappers instead of plugin tools (e.g. `habitica`, `whatsapp_archive`), the **tool allowlist** is usually the cause.
+If the agent falls back to `exec` or shell wrappers instead of plugin tools (e.g. `habitica`, `wa_archive`), the **tool allowlist** is usually the cause.
 
 ### 2.1 Allow plugin tools
 
@@ -54,7 +54,7 @@ Example:
 ### 2.2 Boot files (TOOLS.md)
 
 - The agent reads **workspace boot files** (e.g. `~/.openclaw/workspace/TOOLS.md`) to know what tools exist and how to use them.
-- **Keep TOOLS.md aligned with reality**: document native tools (e.g. `habitica`, `whatsapp_archive`) and state that the agent should **use them directly**, not via `exec` or shell wrappers.
+- **Keep TOOLS.md aligned with reality**: document native tools (e.g. `habitica`, `wa_archive`) and state that the agent should **use them directly**, not via `exec` or shell wrappers.
 - If a **Memory Synthesis** (or similar) cron **edits TOOLS.md**, it can overwrite your wording. Add an explicit instruction in that cron’s prompt: **"Do NOT edit TOOLS.md"** so your tool documentation is preserved.
 
 ---
@@ -95,9 +95,8 @@ Example:
 
 ### 5.1 Use native tools in cron prompts
 
-- Cron jobs that need **WhatsApp archive** or **Habitica** should instruct the agent to **call the native tools** (e.g. `whatsapp_archive`, `habitica`), not raw SQL, custom scripts, or `exec`.
-- Example (daily summary): *"Use the native whatsapp_archive tool with action 'recent' and limit 200. Do NOT use exec or raw SQL."*
-- Example (Habitica): *"Use the native habitica tool with action 'dailies'. Do NOT use exec or ~/bin/habitica."*
+- For this fork: shell scripts (`wa_archive`, `habitica`, `sparky_fitness`, `todoist_tasks`) in `~/bin/` are the correct tools. The agent calls them via `exec`.
+- The native `habitica` gateway plugin also works for Habitica tasks.
 
 ### 5.2 Avoid high-frequency agent crons
 

@@ -62,7 +62,7 @@ Run through this after every full deployment. Tick each item only after you have
 
 - [ ] Projects exist: Shopping, Weighsoft, Nedbank, Home, Books to Read
 - [ ] Label `in-progress` exists (ID: `2183350196`)
-- [ ] Project IDs in `TOOLS.md` match actual IDs from `openclaw_tasks projects list`
+- [ ] Project IDs in `TOOLS.md` match actual IDs from `todoist_tasks list`
 
 ---
 

@@ -5,6 +5,11 @@
 
 set -euo pipefail
 
+if [ -z "${HABITICA_USER_ID:-}" ] && [ -f "$HOME/.profile" ]; then
+  # shellcheck source=/dev/null
+  . "$HOME/.profile"
+fi
+
 USER_ID="$HABITICA_USER_ID"
 API_KEY="$HABITICA_API_KEY"
 BASE="https://habitica.com/api/v3"
@@ -26,7 +31,7 @@ case "$ACTION" in
     python3 -c "
 import json, sys
 stats = json.load(open('$TMP'))['data']['stats']
-print(f'HP: {round(stats[\"hp\"])}/{stats[\"maxHealth\"]} | MP: {round(stats[\"mp\"])} | Level: {stats[\"lvl\"]} | GP: {round(stats[\"gp\"],2)} | Streak: (see dailies)')
+print(f'HP: {round(stats[\"hp\"])}/50 | MP: {round(stats[\"mp\"])} | Level: {stats[\"lvl\"]} | GP: {round(stats[\"gp\"],2)} | Streak: (see dailies)')
 "
     _get "/tasks/user"
     python3 -c "
@@ -118,8 +123,33 @@ for t in tasks:
     echo "Created todo: $TITLE"
     ;;
 
+  score_habit)
+    TITLE="${2:?habit name required}"
+    DIRECTION="${3:-up}"
+    _get "/tasks/user?type=habits"
+    TASK_ID=$(python3 -c "
+import json, sys
+tasks = json.load(open('$TMP'))['data'] if 'data' in json.load(open('$TMP')) else json.load(open('$TMP'))
+frag = sys.argv[1].lower()
+for t in (tasks if isinstance(tasks, list) else []):
+    if frag in t.get('text','').lower():
+        print(t['id'])
+        break
+" "$TITLE")
+    if [ -z "$TASK_ID" ]; then
+      echo "No habit found matching: $TITLE"
+      exit 1
+    fi
+    _post "/tasks/$TASK_ID/score/$DIRECTION"
+    if [ "$DIRECTION" = "up" ]; then
+      echo "Scored up: $TITLE"
+    else
+      echo "Scored down: $TITLE"
+    fi
+    ;;
+
   *)
-    echo "Usage: habitica dashboard|dailies|habits|todos|complete <title>|create_todo <title>"
+    echo "Usage: habitica dashboard|dailies|habits|todos|complete <title>|create_todo <title>|score_habit <title> [up|down]"
     exit 1
     ;;
 esac

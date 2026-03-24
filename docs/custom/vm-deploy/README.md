@@ -1,6 +1,6 @@
 # vm-deploy — script index and deployment guide
 
-This folder contains every file needed to deploy and operate the OpenClaw Personal Assistant system on the Linux VM. There are 41 files here. This README tells you which ones matter, in what order, and what all the rest are.
+This folder contains every file needed to deploy and operate the OpenClaw Personal Assistant system on the Linux VM. There are 60+ files here. This README tells you which ones matter, in what order, and what all the rest are.
 
 ---
 
@@ -27,12 +27,13 @@ These are the production files actively used by the live system.
 
 | File | What it is | When to update |
 |---|---|---|
-| `TOOLS.md` | Agent identity, schedule, routing rules, tool inventory, sacred calendar | When behaviour, routing, or IDs change |
+| `TOOLS.md` | Agent identity, schedule, routing, cross-service chaining, coaching intelligence, proactive anticipation | When behaviour, routing, chaining rules, or coaching logic changes |
 | `calendar-2026.json` | Seven Feasts 2026 + family birthdays (machine-readable) | January each year → create `calendar-YYYY.json` |
 | `phase2-deploy-code.sh` | VM: git pull + pnpm build + npm install + gateway restart | Rarely (only if build steps change) |
 | `phase3b-sparky-start.sh` | VM: correct Docker install (Ubuntu 20.04 safe) + Compose up | Use instead of `phase3-sparky-setup.sh` |
 | `phase5-workspace-setup.sh` | VM: verify TOOLS.md + calendar landed, create MEMORY.md | Rarely |
 | `phase7-crons-v2.sh` | VM: create all 45 personal-assistant cron jobs (correct CLI syntax) | When cron schedule/message changes |
+| `add-proactive-crons.sh` | VM: add 6 proactive intelligence crons (pre-standup, macro coach, dinner, steps, EOD) | When proactive cron logic changes |
 | `phase8-todoist-setup.sh` | VM: create Todoist projects + in-progress label | Once per account (idempotent) |
 | `e2e-test.sh` | Full 34-check E2E harness: create data → verify → cleanup | After any system change |
 | `deploy-all.ps1` | PowerShell orchestrator for full fresh deploy | When phases or paths change |
@@ -77,16 +78,26 @@ test-sparky-schema.sh
 The agent's boot file. Deployed to `~/.openclaw/workspace/TOOLS.md` on the VM. Contains:
 - Identity and spiritual anchor
 - Full daily schedule table
-- Medication protocol (morning + evening)
-- Hydration protocol (3 × 1.2L bottles)
 - Accountability partner contacts and escalation trigger
 - Routing rules (health/nutrition, task management, spiritual/emotional, work boundaries)
-- Tool inventory with all action names
-- Credential/config paths table (Todoist project IDs, label IDs, secret paths)
-- Sacred calendar (Seven Feasts 2026 + family birthdays)
+- **Cross-Service Chaining** — maps every user input to ALL related downstream actions (Phase 3)
+- **Coaching Intelligence** — after-log coaching, micro-commitments, win celebration, powerful questioning, reframing (Phase 3)
+- **Proactive Anticipation** — defines how the agent behaves for proactive crons (Phase 3)
+- Tool inventory with all action names (including `score_habit`)
+- Response formatting rules (never expose IDs)
+- WhatsApp Groups registry and on-demand summary routing
+- Credential/config paths table
 - Annual goals framework reference
-- Weekend structure (Nagmal, church, shopping, meal prep)
-- Recovery protocol (no shaming, one question)
+
+### Skills (deployed to `~/.openclaw/workspace/skills/`)
+
+| Skill | File | Key additions in Phase 3 |
+|---|---|---|
+| `medication` | `skills/medication/SKILL.md` | Mandatory cross-service completion, time-of-day inference |
+| `health-coach` | `skills/health-coach/SKILL.md` | Macro Estimation Protocol with GAPS food table, after-log coaching, coffee tracking, fermented food/ACV scoring |
+| `habitica-tasks` | `skills/habitica-tasks/SKILL.md` | `score_habit` command, streak celebration, pattern detection, win reinforcement |
+| `exercise` | `skills/exercise/SKILL.md` | Unchanged — references `exercise-plan.md` |
+| `spiritual` | `skills/spiritual/SKILL.md` | Unchanged — spiritual anchor and recovery protocol |
 
 **Never edited by automated processes.** Memory Synthesis and cron prompts must include "Do NOT edit TOOLS.md".
 
@@ -148,7 +159,7 @@ Run after SCP'ing TOOLS.md and calendar-2026.json to the VM. Verifies both files
 
 ### `phase7-crons-v2.sh`
 
-Creates all 45 new personal-assistant cron jobs. Uses the correct CLI syntax:
+Creates the core 45 personal-assistant cron jobs. Uses the correct CLI syntax:
 ```bash
 openclaw cron add \
   --name "morning-anchor" \
@@ -173,6 +184,9 @@ Cron categories covered:
 - Weekend: saturday-anchor, saturday-shopping, sunday-meal-prep, state-of-me-report
 - Birthdays: Alicia (4 crons: 14d, 7d, eve, day), Kealyn (3 crons: 14d, 7d, day)
 - Feasts: 10 crons (7-day notices + eves/day-of for Passover, Unleavened Bread, Firstfruits, Shavuot, Trumpets, Yom Kippur, Tabernacles)
+- **Proactive intelligence (Phase 3, `add-proactive-crons.sh`):** pre-standup-weighsoft (Mon/Wed/Fri 7:25), pre-standup-trade (weekdays 9:25), macro-gap-coach (weekdays 14:00), dinner-prep-nudge (weekdays 17:00), steps-check (daily 20:00), eod-reconciliation (daily 21:15)
+
+**Total: ~58 active crons** (52 from Phase 2 + 6 proactive from Phase 3)
 
 ---
 
@@ -280,10 +294,9 @@ All secrets live in `~/.openclaw/secrets/` on the VM (not in the repo).
 | `sparky-token` | SparkyFitness API key | Settings → API in the web UI (`http://<VM_IP>:3004`) |
 | `todoist-token` | Todoist personal API token | todoist.com → Settings → Integrations → Developer |
 
-**Gateway token** (used in `e2e-test.sh` and `send-wa-sparky.sh`): Read from `~/.openclaw/openclaw.json` → top-level `token` field:
+**Gateway token** (used in `e2e-test.sh` and `send-wa-sparky.sh`): Read from `~/.openclaw/openclaw.json` at nested `gateway.auth.token`:
 ```bash
-python3 -c "import json; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d['token'])" 2>/dev/null || \
-  cat ~/.openclaw/openclaw.json | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])"
+python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('gateway',{}).get('auth',{}).get('token',''))"
 ```
 
 **Habitica credentials**: Set as environment variables in the systemd service file. Check with:

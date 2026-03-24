@@ -137,8 +137,7 @@ Use **[DEPLOY.md](/DEPLOY.md)** as the canonical deployment guide. Apply these *
 Or manually for code-only changes:
 
 ```powershell
-$sshKey = "C:\Users\henza\.ssh\id_rsa"
-$vm = "henzard@192.168.122.82"
+# $sshKey and $vm are defined in docs\custom\vm-deploy\deploy-all.ps1 (or define them for your environment).
 scp -i $sshKey docs\custom\vm-deploy\phase2-deploy-code.sh "${vm}:/tmp/oc-phase2.sh"
 ssh -i $sshKey $vm "bash /tmp/oc-phase2.sh && rm /tmp/oc-phase2.sh"
 ```
@@ -160,8 +159,8 @@ scp -i $sshKey tools\openclaw-mcp-server.mjs "${vm}:~/openclaw-custom/tools/open
 
 - **Config schema**: Adding a key only under `accounts.<id>` or only at top-level in the wrong schema causes "Unrecognized key" and gateway abort. Add shared keys to the **shared** Zod schema (and matching TypeScript type) so both positions are valid.
 - **Plugin registration**: If a plugin checks env vars at **registration** time, the tool can be missing when the agent runs in a different process (e.g. CLI) that doesn't have those env vars. Prefer resolving secrets **at execution time** and always registering the tool.
-- **Tool allowlists**: Use **`tools.alsoAllow: ["group:plugins"]`** (or the correct allowlist) so plugin tools (e.g. `habitica`, `whatsapp_archive`) are allowed; otherwise the agent may try to use `exec` or shell wrappers instead of the native tools.
-- **Cron prompts**: Point cron jobs at **native tools** (e.g. "Use the native `whatsapp_archive` tool" / "Use the native `habitica` tool") instead of raw SQL, custom scripts, or `exec` so behavior stays consistent and maintainable.
+- **Tool allowlists**: Use **`tools.alsoAllow: ["group:plugins"]`** (or the correct allowlist) so plugin tools (e.g. `habitica`, `wa_archive`) are allowed; otherwise the agent may try to use `exec` or shell wrappers instead of the native tools.
+- **Cron prompts**: Both work for this fork: the native **`habitica`** plugin tool and **`~/bin/`** shell scripts (e.g. `wa_archive`, `habitica`, `sparky_fitness`, `todoist_tasks`) invoked via **`exec`**. Avoid raw SQL or one-off unmaintained scripts.
 - **Cron CLI syntax**: `openclaw cron add` uses **named flags** (`--name`, `--cron`, `--tz`, `--message`, `--announce`). There is no `--job` JSON flag. Run `openclaw cron add --help` to verify before scripting.
 - **High-frequency crons**: Avoid agent-turn crons every 1–5 minutes; they burn API credits and add little value. Prefer daily or task-based schedules.
 - **MCP tool scope**: The Cursor MCP server (`tools/openclaw-mcp-server.mjs`) and the OpenClaw gateway plugin system are **separate registries**. A tool added to the MCP server is only accessible from Cursor, not from the WhatsApp agent. To expose a capability to the WhatsApp agent, build a proper OpenClaw extension (like `extensions/habitica`).
