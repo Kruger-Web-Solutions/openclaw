@@ -91,10 +91,30 @@ Each Sunday 20:00 State of Me report ends with a proposed mission for the coming
 
 | Step | What happens |
 |------|-------------|
-| Sunday 20:00 | Sarel reads this week's FASTER flags, SWORD D-actions, eating triggers, and task patterns → proposes a 7-Day Mission across Faith, Health, Work, Emotional |
+| Sunday 20:00 | Sarel reads this week's FASTER flags, SWORD D-actions, eating triggers, Friday reflection, and task patterns → proposes a 7-Day Mission across Faith, Health, Work, Emotional |
 | Reply "mission confirmed" | Mission locked and stored in MEMORY.md under `## Current Mission` |
 | Reply "mission: [your adjustments]" | Sarel adjusts and stores the updated mission |
 | Friday 16:00 | Week-close asks which mission items you completed → debrief logged |
+
+---
+
+## Reflections (Weekly + Monthly)
+
+Every Friday after wins and mission review, Sarel asks a quick 3-field reflection:
+
+```
+well: [what went well] | more: [what I should do more of] | stop: [what I should stop]
+```
+
+Reply in one line — Sarel logs it to MEMORY.md under `## Weekly Reflections`. You never have to think about format.
+
+| When | What happens |
+|------|-------------|
+| Friday 16:00 | After wins + mission review, Sarel asks the reflection prompt — reply in one line |
+| Sunday 20:00 | Sarel reads your Friday reflection and uses "more" + "stop" to inform the 7-Day Mission |
+| Last Friday of the month | Month-close: Sarel reads 4 weeks of entries, surfaces recurring patterns, asks for one monthly commitment |
+
+Monthly pattern alert: if the same "stop" item appears 3+ times across Friday reflections, Sarel names it directly in the month-close: "That is not a preference — that is a pattern."
 
 ---
 
@@ -166,6 +186,8 @@ Two frameworks available (see `BOOK-COACHING-USAGE.md`):
 5. **19:00** — Exercise (agent provides plan from `exercise-plan.md`)
 6. **21:00** — Evening meds reminder
 7. **Sunday 20:00** — State of Me weekly report → ends with proposed 7-Day Mission for next week
+8. **Friday 16:00** — Week close: task summary + 3 wins + mission review + quick reflection (well/more/stop)
+9. **Last Friday of month** — Month close: 4 weeks of reflections synthesised → patterns named → one commitment
 
 ---
 
