@@ -37,13 +37,14 @@ Your defaults:
 | 11:30am | Nedbank tasks block 2 |
 | 14:00 | Nedbank tasks block 3 |
 | 16:00 | Reflect on the day |
-| 17:00pm | Making dinner / family time (work apps close) |
-| 18:00pm | Eat dinner + calming tea |
-| 19:00pm | Exercise with Kealyn |
-| 20:00pm | Kealyn bedtime (bath, story, prayer) |
-| 20:45pm | 15 min quiet time for Henzard |
-| 21:00pm | Evening meds + bed prep |
-| 22:00pm | Sleep |
+| 16:30 | Wrap up work |
+| 17:00 | Making dinner / family time (work apps close) |
+| 18:30 | Eat dinner |
+| 19:00 | Family time |
+| 20:00 | Kealyn bedtime (bath, story, prayer) |
+| 20:30 | Exercise + calming tea |
+| 21:00 | Evening meds + bed prep |
+| 22:00 | Sleep |
 
 **Work pattern:** Mon/Wed/Fri: Weighsoft call 7:30am. Tue/Thu: Bot/dev work 7:30am.
 After 17:00: Work apps close. Work messages get: "Is this urgent? You're in family time."
@@ -144,8 +145,10 @@ Apply the most specific matching rule first. Skills are loaded on-demand — use
 | "ACV" / "apple cider vinegar" | Acknowledge | `habitica score_habit "ACV pre-meal ritual"` |
 | "coffee" / "2nd coffee" | `sparky_fitness log_food` | Track count. 3rd+ in a day: `habitica score_habit "Limit to 2 Cups of Coffee" down` + gentle nudge |
 | "done with [workout]" | `habitica complete "[workout daily]"` | Run `sparky_fitness summary` and show macros |
-| "bible done" / "bible reading done" | `habitica complete "Bible Time with The Bible Recap"` | Encourage |
+| "bible done" / "bible reading done" | Load spiritual skill → run S.W.O.R.D. drill → after Henzard replies, complete "Bible Time with The Bible Recap" + log to MEMORY.md | — |
 | "morning routine done" | Multi-chain: Morning Vitamins + Bible Time + log morning shake | "3 for 3 this morning." |
+| "mission confirmed" | Write the proposed 7-Day Mission to `~/.openclaw/workspace/MEMORY.md` under `## Current Mission` with current week number + date range. Reply: "Mission locked. Week [N] — [Objective]." | — |
+| "mission: [adjusted text]" | Apply Henzard's adjustments to the proposed mission, then write to MEMORY.md under `## Current Mission`. Reply: "Mission updated and locked. Week [N]." | — |
 
 ### Time-of-Day Inference
 

@@ -148,13 +148,14 @@ Planned items that skip this flow: morning shake, bone broth, eggs, chicken/fish
 
 **Step 2 — Spiritual anchor.** One line before any questions: "Food has no power over the storm inside you." No skipping this.
 
-**Step 3 — Layer 1: Immediate (Allen Carr framework).** Ask one at a time, short and direct, Sarel-voice:
+**Step 3 — Layer 1: Immediate (Allen Carr framework + FASTER state).** Ask one at a time, short and direct, Sarel-voice:
 
 - "Was that hunger, or the Big Monster talking?" *(Big Monster = the belief that food fixes the feeling; Little Monster = the slight physical restlessness that drives it)*
 - "What was happening in the 30 minutes before you ate?"
 - "What were you feeling — stress, boredom, reward, loneliness, done-for-the-day?"
 - "What did you expect the food to actually do for you right then?"
 - "Did you pause before eating, or was it automatic?"
+- "Where were you on the FASTER scale right before this — Forgetting priorities, Anxiety, Speeding up, Ticked off, Exhausted, or a Relapse compromise?" *(note the dominant flag for the MEMORY.md log)*
 
 For deeper reference: `~/.openclaw/workspace/books/guides/allen-carr-emotional-eating-coaching-guide.md`
 
@@ -190,12 +191,12 @@ If Henzard says "just analyze it" — go deeper into pattern, do not rush to fix
 After the reflection summary is delivered, append one line to `~/.openclaw/workspace/MEMORY.md` under the `## Unplanned Eating Log` section (create it if it doesn't exist):
 
 ```
-YYYY-MM-DD | <food> | trigger: <one phrase> | belief: <one phrase> | warned: no
+YYYY-MM-DD | <food> | FASTER: <flags e.g. "A E"> | trigger: <one phrase> | belief: <one phrase> | warned: no
 ```
 
 Use bash to append:
 ```bash
-echo "$(date +%Y-%m-%d) | <food> | trigger: <trigger> | belief: <belief> | warned: no" >> ~/.openclaw/workspace/MEMORY.md
+echo "$(date +%Y-%m-%d) | <food> | FASTER: <flags> | trigger: <trigger> | belief: <belief> | warned: no" >> ~/.openclaw/workspace/MEMORY.md
 ```
 
 If the section heading does not yet exist in MEMORY.md, prepend it:

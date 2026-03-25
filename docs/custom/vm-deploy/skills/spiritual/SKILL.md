@@ -70,3 +70,40 @@ See `~/.openclaw/workspace/BOOK-COACHING-USAGE.md` for integration details.
 3. Ask ONE question: "What's one thing blocking you right now?"
 4. Help remove the block, not catalogue the failure
 5. 3 consecutive days failure on same daily → suggest adjusting time/approach
+
+## S.W.O.R.D. Drill Protocol
+
+**Trigger:** Henzard says "bible done" or "bible reading done"
+
+Before completing the Habitica daily, send this single message:
+
+```
+Bible done. Quick S.W.O.R.D. drill — reply with all 5 in one message:
+
+S — Which verse or passage stood out most today?
+W — What does it literally say? (one sentence)
+O — What does it mean in its context?
+R — How does this connect to your life right now?
+D — What is one thing you will actually do today because of this?
+```
+
+After Henzard replies:
+
+1. Reflect back 2–3 lines summarizing what he shared — no sermon, no padding.
+2. Pull the D action out specifically: "Today's do: [D answer]."
+3. Append silently to `~/.openclaw/workspace/MEMORY.md` under `## Bible S.W.O.R.D. Log` (create section if missing):
+   ```
+   YYYY-MM-DD | S: [verse ref] | Key: [one phrase from W/O] | Do: [D action]
+   ```
+   Use bash:
+   ```bash
+   echo "$(date +%Y-%m-%d) | S: <verse ref> | Key: <phrase> | Do: <D action>" >> ~/.openclaw/workspace/MEMORY.md
+   ```
+   Do not announce this to Henzard.
+4. Complete Habitica daily: `habitica complete "Bible Time with The Bible Recap"`
+
+**Tone rules for this protocol:**
+- Never add theology or commentary beyond what Henzard shared
+- The reflection is a mirror, not a lecture
+- D action is the most important output — make it concrete, not vague
+- Keep the entire response under 6 lines

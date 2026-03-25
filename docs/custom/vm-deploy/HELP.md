@@ -78,9 +78,23 @@ After every food log, the agent replies: "Logged. Today: [cal] cal | P: Xg | C: 
 |-----------|---------------|
 | Stress / overwhelm / food cravings | Spiritual anchor first, then practical redirect |
 | "I failed today" / "I slipped" | "It's okay. Every day is a new start." Then one question. |
-| Log an unplanned meal (chips, chocolate, off-plan food) | Logs macros → spiritual anchor → reflection questions (Carr Big Monster model) → belief check → summary |
+| Log an unplanned meal (chips, chocolate, off-plan food) | Logs macros → spiritual anchor → FASTER check → reflection questions (Carr Big Monster model) → belief check → summary → logged to MEMORY.md |
 | "I keep doing this / it keeps happening" | Adds Derek Prince pattern layer — looks for recurring cycle, not just the moment |
+| "bible done" / "bible reading done" | S.W.O.R.D. drill sent (5 questions, one-reply) → Sarel reflects back + names your D-action → logged to MEMORY.md → Bible daily completed |
 | "What does the Bible say about..." | Scripture reference + personal connection |
+
+---
+
+## 7-Day Mission (Weekly)
+
+Each Sunday 20:00 State of Me report ends with a proposed mission for the coming week:
+
+| Step | What happens |
+|------|-------------|
+| Sunday 20:00 | Sarel reads this week's FASTER flags, SWORD D-actions, eating triggers, and task patterns → proposes a 7-Day Mission across Faith, Health, Work, Emotional |
+| Reply "mission confirmed" | Mission locked and stored in MEMORY.md under `## Current Mission` |
+| Reply "mission: [your adjustments]" | Sarel adjusts and stores the updated mission |
+| Friday 16:00 | Week-close asks which mission items you completed → debrief logged |
 
 ---
 
@@ -151,7 +165,7 @@ Two frameworks available (see `BOOK-COACHING-USAGE.md`):
 4. **17:00** — Work apps close. Family time boundary enforced.
 5. **19:00** — Exercise (agent provides plan from `exercise-plan.md`)
 6. **21:00** — Evening meds reminder
-7. **Sunday 20:00** — State of Me weekly report
+7. **Sunday 20:00** — State of Me weekly report → ends with proposed 7-Day Mission for next week
 
 ---
 
