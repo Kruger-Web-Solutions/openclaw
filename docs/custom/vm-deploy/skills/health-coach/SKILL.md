@@ -9,6 +9,67 @@ description: GAPS diet nutrition coaching, macro tracking, food logging, hydrati
 
 Henzard follows the GAPS diet protocol. Meals are structured around gut healing, nutrient density, and anti-inflammatory foods.
 
+## Weight Goal — 155kg → 120kg by October 2026
+
+**Starting weight:** 155kg (March 2026)
+**Target:** 120kg by end of October 2026
+**Pace:** 5kg/month = ~1.25kg/week
+
+### Monthly Milestones
+
+| Month end | Target kg | Weekly pace target |
+|---|---|---|
+| April 2026 | 150 | 1.25kg/wk |
+| May 2026 | 145 | 1.25kg/wk |
+| June 2026 | 140 | 1.25kg/wk |
+| July 2026 | 135 | 1.25kg/wk |
+| August 2026 | 130 | 1.25kg/wk |
+| September 2026 | 125 | 1.25kg/wk |
+| October 2026 | 120 | GOAL |
+| Nov–Dec 2026 | 120 | Maintain (buffer months) |
+
+### Weekly Weigh-in Protocol
+
+- **Monday morning before eating** is the official weigh-in. Sarel prompts at 5:45am.
+- Log via `sparky_fitness weight X`.
+- After logging, Sarel calculates: current weight vs this month's target, weekly delta, on-track/behind/ahead.
+- If behind by more than 0.5kg at mid-week (Wednesday), Sarel names one structural fix — not motivation.
+
+### Weight Response Rules
+
+After a Monday weigh-in, respond based on the data:
+
+- **On track or ahead:** "On pace. [current]kg → [monthly target]kg by [month end]. Keep going."
+- **Slightly behind (< 1kg from pace):** "[current]kg — slightly behind the [monthly target]kg target. What is one thing you can tighten this week?"
+- **Behind (1kg+ from pace):** "[current]kg — that is [X]kg behind where you need to be by [month end]. No shame, but we need a structural fix. Which one: meal prep, sleep, water, or exercise?"
+- **Weight went up:** "Scale went up [X]kg. Could be water, could be real. Either way — what was different last week?" No panic, just data.
+
+### Plateau Protocol
+
+If weight does not change for 2+ consecutive Monday weigh-ins despite macro compliance:
+1. Do NOT shame or escalate. Plateaus are biological, not failure.
+2. Name it: "Two weeks at [X]kg. That is a plateau, not a problem."
+3. Suggest ONE adjustment, rotating through these options:
+   - Increase water intake by 500ml/day for a week
+   - Increase protein by 15g/day (extra egg or collagen)
+   - Add one extra 20-minute walk per week
+   - Check sleep quality — poor sleep stalls weight loss
+4. If plateau lasts 3+ weeks: "Three weeks stalled. This is where most people quit. You are not most people. Let us adjust your macro targets — load the health-coach skill and review goals."
+5. Log plateau to MEMORY.md: `YYYY-MM-DD | PLATEAU week [N] at [X]kg | action: [adjustment]`
+
+### Calorie-Weight Intelligence
+
+When the Sunday State of Me report shows average daily calories exceeded the macro target for that week AND weight is behind the monthly milestone:
+- Name it directly: "Calories averaged [X] vs [target] goal this week, and weight is [behind amount]kg behind pace. The math does not lie — the deficit is not there."
+- Do NOT lecture. One question: "What meal is the biggest overshoot? That is where we tighten."
+
+### NSV Tracking (Non-Scale Victories)
+
+On the last Friday of each month (during monthly reflection close), Sarel asks:
+- "What changed this month that the scale does not show? Energy, clothes fitting, sleep, mood, strength — anything."
+Log to MEMORY.md under `## NSV Log`: `YYYY-MM | [Henzard's answer]`
+These matter during plateau weeks — Sarel references the latest NSV entry during plateau protocol step 2.
+
 ## Hydration Protocol (3.6L/day)
 
 | Bottle | Fill | Empty by |

@@ -118,6 +118,22 @@ Monthly pattern alert: if the same "stop" item appears 3+ times across Friday re
 
 ---
 
+## Weight Tracking (155kg → 120kg by October 2026)
+
+| When | What happens |
+|------|-------------|
+| Monday 5:45am | Sarel prompts: "Step on the scale." Reply: "I weigh X" |
+| After weigh-in | Sarel shows: current vs monthly target, weekly delta, on-track/behind/ahead |
+| Wednesday 14:00 | If behind pace, Sarel sends one structural fix. If on track, silence. |
+| Sunday 20:00 | State of Me report includes WEIGHT line with trend and monthly milestone |
+| 2+ weeks no change | Plateau protocol: no shame, one adjustment (water, protein, walk, sleep) |
+| Calories exceed target + behind pace | Sarel names it: "The deficit is not there. Which meal is the biggest overshoot?" |
+| Last Friday of month | Monthly NSV question: "What changed that the scale does not show?" |
+
+Monthly targets: Apr 150 → May 145 → Jun 140 → Jul 135 → Aug 130 → Sep 125 → Oct 120
+
+---
+
 ## Book Coaching Frameworks
 
 Two frameworks available (see `BOOK-COACHING-USAGE.md`):
@@ -179,7 +195,7 @@ Two frameworks available (see `BOOK-COACHING-USAGE.md`):
 
 ## Daily Workflow
 
-1. **5:00am** — Wake up, Bible reading
+1. **5:00am** — Wake up, Bible reading (Monday 5:45am: weigh-in prompt)
 2. **6:30am** — Morning meds, shake, planning. Agent sends daily briefing.
 3. **Throughout day** — Cron reminders for hydration, tasks, standups
 4. **17:00** — Work apps close. Family time boundary enforced.
