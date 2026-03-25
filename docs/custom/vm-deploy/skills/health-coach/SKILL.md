@@ -70,6 +70,67 @@ On the last Friday of each month (during monthly reflection close), Sarel asks:
 Log to MEMORY.md under `## NSV Log`: `YYYY-MM | [Henzard's answer]`
 These matter during plateau weeks — Sarel references the latest NSV entry during plateau protocol step 2.
 
+## Monthly 48-Hour Fast (with Giel)
+
+**What:** Friday 18:00 → Sunday 18:00. No food, no tech. With Giel Hetzel (Hetzel Jr).
+**Giel's number:** read from `~/.openclaw/secrets/contacts.env` (GIEL_NUMBER)
+
+### 2026 Schedule
+
+| # | Fast Weekend (Fri–Sun) | Prep starts Monday |
+|---|---|---|
+| ~~1~~ | ~~Mar 13–15~~ (done) | — |
+| 2 | Apr 24–26 | Apr 20 |
+| 3 | May 22–24 | May 18 |
+| 4 | Jun 19–21 | Jun 15 |
+| 5 | Jul 17–19 | Jul 13 |
+| 6 | Aug 14–16 | Aug 10 |
+| 7 | Sep 11–13 | Sep 7 |
+| 8 | Oct 16–18 | Oct 12 |
+
+Dates avoid all Leviticus 23 feasts, family birthdays, and Yom Kippur.
+
+### Prep Week Protocol (Monday of fast week)
+
+On the Monday before a fast weekend, send two messages:
+
+**To Henzard:**
+"Fast week. This Friday 18:00 → Sunday 18:00 with Giel. No food, no tech. Prep this week: eat clean, hydrate extra, get sleep sorted. Thursday: prep your last meal and charge nothing — phone goes off Friday evening."
+
+**To Giel** (via message tool, channel whatsapp, to GIEL_NUMBER from contacts.env):
+"Hey Giel, fast week. Friday 18:00 → Sunday 18:00, same as last time. No food, no tech. Make sure you eat well this week and hydrate. See you Friday."
+
+### Friday Fast Start (17:00)
+
+**To Henzard:**
+"Last meal at 18:00. After that: phone off, no screens, no food until Sunday 18:00. Electrolytes ready? (Salt water + magnesium). Giel is doing this with you. Your body and your mind will thank you Sunday evening."
+
+**To Giel:**
+"Last meal at 18:00 tonight. No food, no tech until Sunday 18:00. You and Henzard are in this together. Stay strong."
+
+### Sunday Break-Fast (18:00)
+
+**To Henzard:**
+"48 hours done. Welcome back. Break your fast gently — bone broth first, then something light. How do you feel? One word."
+
+Log to MEMORY.md under `## Fast Log` (create if missing):
+```
+YYYY-MM-DD | Fast #[N] | 48h with Giel | completed: [yes/no]
+```
+
+### Safety — Blood Pressure Meds
+
+- TRIPLIXAM (BP medication) must still be taken during the fast — with water only.
+- Fasting drops blood pressure. If Henzard reports dizziness, lightheadedness, or visual disturbance during a fast: "Break the fast now. BP meds + fasting can drop pressure too far. Eat something salty. This is not weakness — this is safety."
+- Electrolytes during fast: salt water (1/4 tsp salt in 500ml water, 2–3 times per day) + magnesium supplement.
+
+### Fasting as Plateau Intervention
+
+If weight plateaus for 3+ weeks and water/protein/walking/sleep adjustments have been tried:
+- Suggest moving the next monthly fast forward by 1 week
+- Or add a single 24-hour fast (dinner to dinner) mid-month
+- Never suggest fasting as punishment for unplanned eating
+
 ## Hydration Protocol (3.6L/day)
 
 | Bottle | Fill | Empty by |

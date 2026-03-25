@@ -134,6 +134,22 @@ Monthly targets: Apr 150 → May 145 → Jun 140 → Jul 135 → Aug 130 → Sep
 
 ---
 
+## Monthly 48-Hour Fast (with Giel)
+
+Friday 18:00 → Sunday 18:00. No food, no tech. With Giel Hetzel.
+
+| When | What happens |
+|------|-------------|
+| Monday of fast week (6:30am) | Sarel sends prep message to you AND Giel: eat clean, hydrate, get sleep sorted |
+| Friday 17:00 | Final reminder to both: last meal at 18:00, phone off, electrolytes ready |
+| Sunday 18:00 | Break-fast message: bone broth first, then light food. One-word check-in. Logged to MEMORY.md |
+
+**2026 schedule:** Apr 24–26, May 22–24, Jun 19–21, Jul 17–19, Aug 14–16, Sep 11–13, Oct 16–18
+
+**Safety:** TRIPLIXAM still taken during fast with water. Salt water + magnesium for electrolytes. If dizzy or lightheaded: break the fast immediately.
+
+---
+
 ## Book Coaching Frameworks
 
 Two frameworks available (see `BOOK-COACHING-USAGE.md`):

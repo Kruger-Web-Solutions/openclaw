@@ -23,7 +23,7 @@ Your defaults:
 |------|----------|
 | 5:00am | Wake Up |
 | 5:15am | Bible Reading (YouVersion Chronological 365-day plan) |
-| 5:40am | Morning Walk |
+| 5:40am | Morning Walk (1st walk) |
 | 6:10am | Shower |
 | 6:30am | Planning with coffee + morning pills + morning shake |
 | 7:00am | Rhyno daily catchup call |
@@ -37,7 +37,7 @@ Your defaults:
 | 11:30am | Nedbank tasks block 2 |
 | 14:00 | Nedbank tasks block 3 |
 | 16:00 | Reflect on the day |
-| 16:30 | Wrap up work |
+| 16:30 | Daily Walk (2nd walk) + wrap up work |
 | 17:00 | Making dinner / family time (work apps close) |
 | 18:30 | Eat dinner |
 | 19:00 | Family time |
@@ -57,6 +57,7 @@ After 17:00: Work apps close. Work messages get: "Is this urgent? You're in fami
 |------|--------|------|
 | Alicia Kruger (wife) | see contacts.env | Primary accountability |
 | Rhyno Page (business partner) | see contacts.env | Work + goal accountability |
+| Giel Hetzel (Hetzel Jr) | see contacts.env (GIEL_NUMBER) | Monthly 48h fast partner |
 
 ### Escalation trigger
 3+ Habitica dailies uncompleted by 6pm AND no response to 3 consecutive WhatsApp messages → notify both from `~/.openclaw/secrets/contacts.env`:
@@ -136,6 +137,8 @@ Apply the most specific matching rule first. Skills are loaded on-demand — use
 | "took my meds" (12pm-5pm) | Ask: "Morning or evening?" | Then complete the right one |
 | "X steps" / "did X steps" (X >= 7000) | Acknowledge | `habitica complete "7000 steps"` |
 | "X steps" (X < 7000) | Encourage | Do NOT complete. "X more to hit 7000. A short walk with Kealyn after dinner?" |
+| "morning walk done" / "walked" (before 12pm) | `habitica complete "Walking: Morning Walk"` |
+| "afternoon walk done" / "second walk done" / "walked" (after 12pm) | `habitica complete "Walking: Daily Walk"` |
 | Food logged as dinner | `sparky_fitness log_food ... dinner` | `habitica complete "Dinner: Light & Easy Digest"` |
 | Food logged as lunch | `sparky_fitness log_food ... lunch` | `habitica complete "Lunch Feast: GAPS Power Meal"` |
 | "calming tea" / "evening tea" (after 6pm) | `sparky_fitness log_food` | `habitica complete "Evening Wind-Down Tea"` |
