@@ -6,7 +6,7 @@
 set -uo pipefail
 
 # ── Read tokens from secret files (never hardcoded) ─────────
-GW_TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('token',''))" 2>/dev/null)
+GW_TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('gateway',{}).get('auth',{}).get('token','') or d.get('token',''))" 2>/dev/null)
 SPARKY_TOKEN=$(cat ~/.openclaw/secrets/sparky-token 2>/dev/null)
 TODOIST_TOKEN=$(cat ~/.openclaw/secrets/todoist-token 2>/dev/null)
 source ~/.openclaw/secrets/contacts.env 2>/dev/null || { echo "ERROR: ~/.openclaw/secrets/contacts.env not found. Copy contacts.env.example and fill in real values."; exit 1; }
@@ -307,7 +307,8 @@ WA_RESP=$(python3 - << PYEOF
 import json, urllib.request, os
 
 token = open(os.path.expanduser("~/.openclaw/openclaw.json")).read()
-token = json.loads(token).get("token", "")
+token = json.loads(token)
+token = token.get("gateway", {}).get("auth", {}).get("token", "") or token.get("token", "")
 contacts_path = os.path.expanduser("~/.openclaw/secrets/contacts.env")
 owner_wa = ""
 for line in open(contacts_path):
