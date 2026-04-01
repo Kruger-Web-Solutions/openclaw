@@ -35,6 +35,7 @@ export type ResolvedWhatsAppAccount = {
   reactionLevel?: WhatsAppAccountConfig["reactionLevel"];
   groups?: WhatsAppAccountConfig["groups"];
   debounceMs?: number;
+  outboundRateLimit?: WhatsAppAccountConfig["outboundRateLimit"];
 };
 
 export const DEFAULT_WHATSAPP_MEDIA_MAX_MB = 50;
@@ -158,6 +159,7 @@ export function resolveWhatsAppAccount(params: {
     reactionLevel: merged.reactionLevel,
     groups: merged.groups,
     debounceMs: merged.debounceMs,
+    outboundRateLimit: merged.outboundRateLimit,
   };
 }
 
