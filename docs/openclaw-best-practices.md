@@ -97,6 +97,13 @@ Example:
 
 - For this fork: shell scripts (`wa_archive`, `habitica`, `sparky_fitness`, `todoist_tasks`) in `~/bin/` are the correct tools. The agent calls them via `exec`.
 - The native `habitica` gateway plugin also works for Habitica tasks.
+- **After an upstream sync**, verify exec is not blocked. The upstream default for `tools.exec.security` is `"allowlist"` (deny unlisted commands) and `tools.exec.ask` is `"on-miss"` (prompt for unlisted commands). Both block `~/bin/` scripts on a fresh merge. For a private personal VM, set both to open:
+  ```bash
+  openclaw config set tools.exec.security full
+  openclaw config set tools.exec.ask off
+  # then restart gateway
+  systemctl --user restart openclaw-gateway
+  ```
 
 ### 5.2 Avoid high-frequency agent crons
 

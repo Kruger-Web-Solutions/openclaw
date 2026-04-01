@@ -164,6 +164,12 @@ scp -i $sshKey tools\openclaw-mcp-server.mjs "${vm}:~/openclaw-custom/tools/open
 - **Plugin registration**: If a plugin checks env vars at **registration** time, the tool can be missing when the agent runs in a different process (e.g. CLI) that doesn't have those env vars. Prefer resolving secrets **at execution time** and always registering the tool.
 - **Tool allowlists**: Use **`tools.alsoAllow: ["group:plugins"]`** (or the correct allowlist) so plugin tools (e.g. `habitica`, `wa_archive`) are allowed; otherwise the agent may try to use `exec` or shell wrappers instead of the native tools.
 - **Cron prompts**: Both work for this fork: the native **`habitica`** plugin tool and **`~/bin/`** shell scripts (e.g. `wa_archive`, `habitica`, `sparky_fitness`, `todoist_tasks`) invoked via **`exec`**. Avoid raw SQL or one-off unmaintained scripts.
+- **Exec security gate after upstream sync**: Upstream introduced `tools.exec.security` (default: `"allowlist"`) and `tools.exec.ask` (default: `"on-miss"`). After merging, `~/bin/` scripts (`habitica`, `sparky_fitness`, `wa_archive`, `todoist_tasks`) will be **denied or prompted** because they are not in any allowlist. Fix on your personal VM immediately after restarting the gateway:
+  ```bash
+  openclaw config set tools.exec.security full
+  openclaw config set tools.exec.ask off
+  systemctl --user restart openclaw-gateway
+  ```
 - **Cron legacy delivery migration**: Upstream moved cron legacy-delivery config migration into `openclaw doctor`. After any upstream sync, **always run `openclaw doctor`** so pending cron migrations execute and no crons break silently.
 - **Cron CLI syntax**: `openclaw cron add` uses **named flags** (`--name`, `--cron`, `--tz`, `--message`, `--announce`). There is no `--job` JSON flag. Run `openclaw cron add --help` to verify before scripting.
 - **qmd memory patterns**: If cron prompts reference qmd collection scoping, use `--mask` not `--glob` (upstream fix #58736 aligned the flag name). Old `--glob` patterns may silently match nothing.
