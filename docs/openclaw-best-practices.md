@@ -158,6 +158,12 @@ These are independent:
 
 Order matters when changing policy: set `dmPolicy` to **`allowlist`** before shrinking `allowFrom` away from `"*"` (config validation enforces consistency). A helper script with placeholders lives at [`docs/custom/vm-deploy/set-wa-allowlist.sh`](custom/vm-deploy/set-wa-allowlist.sh); edit the `ALLOW_JSON` line on the VM, do not commit real numbers.
 
+### 8.2 After `openclaw security audit`
+
+- **Stale WhatsApp warnings**: If you already use `dmPolicy` / `groupPolicy` **`allowlist`**, re-run the audit after a gateway restart. Older reports can still show `open` from a previous config snapshot.
+- **Credentials directory**: If the audit reports mode `775` (group/world accessible), fix on the gateway host: `chmod 700 ~/.openclaw/credentials`.
+- **`gateway.bind` not loopback** (e.g. `lan`): Configure **`gateway.auth.rateLimit`** so failed token attempts are throttled (example: `maxAttempts` 10, `windowMs` 60000, `lockoutMs` 300000). A helper script is in [`docs/custom/vm-deploy/apply-security-hardening.sh`](custom/vm-deploy/apply-security-hardening.sh).
+
 ---
 
 ## 9. Quick optimization summary (Cursor-oriented)
