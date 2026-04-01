@@ -39,6 +39,7 @@ These are the production files actively used by the live system.
 | `deploy-all.ps1` | PowerShell orchestrator for full fresh deploy | When phases or paths change |
 | `send-wa-sparky.sh` | VM: send WhatsApp message via curl (bypasses CLI WebSocket) | Utility — use any time |
 | `check-habitica-full.sh` | VM: list all Habitica dailies/habits/todos via gateway | Audit tool |
+| `set-wa-allowlist.sh` | VM: set `dmPolicy`/`groupPolicy` allowlists so only listed E.164 numbers get replies; archive still logs all | When tightening WhatsApp who can trigger the agent |
 
 ---
 

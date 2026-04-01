@@ -148,6 +148,16 @@ These keys are now valid in the upstream config schema. Do **not** add them to `
 - **Secrets** (tokens, API keys) must not be committed. Use **env vars** or secret refs; keep files that contain secrets out of git (e.g. `.cursor/mcp.json` in `.gitignore`, provide `.cursor/mcp.json.example` instead).
 - **Tool policy**: Prefer **`tools.profile: "coding"`** or **`messaging`** plus **`tools.alsoAllow: ["group:plugins"]`** over `full` when you want plugin tools without opening all tools. For exposed groups, consider `tools.profile: "messaging"` and sandboxing (see [Security](/docs/gateway/security/index.md)).
 
+### 8.1 WhatsApp: who gets replies vs what is archived
+
+These are independent:
+
+- **Replies (DMs)**: Set `channels.whatsapp.dmPolicy` to **`allowlist`** and `channels.whatsapp.allowFrom` to a JSON array of E.164 numbers you trust. Anyone not listed gets no agent response.
+- **Replies (groups)**: Set `channels.whatsapp.groupPolicy` to **`allowlist`** and `channels.whatsapp.groupAllowFrom` to the same idea. With `groupPolicy: "open"`, groups bypass sender checks (only mention rules apply), which is usually wrong if you want the same bar as DMs.
+- **Archive**: With `channels.whatsapp.archive.enabled` **true**, inbound capture runs on the **raw** message hook before routing/allowlist decisions, so **all** messages can be stored while the agent only answers allowlisted senders.
+
+Order matters when changing policy: set `dmPolicy` to **`allowlist`** before shrinking `allowFrom` away from `"*"` (config validation enforces consistency). A helper script with placeholders lives at [`docs/custom/vm-deploy/set-wa-allowlist.sh`](custom/vm-deploy/set-wa-allowlist.sh); edit the `ALLOW_JSON` line on the VM, do not commit real numbers.
+
 ---
 
 ## 9. Quick optimization summary (Cursor-oriented)
@@ -161,5 +171,6 @@ When optimizing an **already-running** OpenClaw after an update:
 5. **Cron** — Point prompts at **native tools**; remove or throttle very frequent agent crons; avoid cron overwriting TOOLS.md.
 6. **Restart** — `systemctl --user daemon-reload` (if you edited the service) and `systemctl --user restart openclaw-gateway`.
 7. **Verify** — `openclaw health`, gateway status, and a quick agent test of the new tools.
+8. **WhatsApp (optional)** — If you use a reply allowlist, set `dmPolicy`/`groupPolicy` to **`allowlist`** and keep archive enabled if you still want full logging (see §8.1).
 
 These steps keep an updated install stable and ensure the agent uses the new capabilities (plugins, archive, etc.) instead of falling back to exec or broken paths.

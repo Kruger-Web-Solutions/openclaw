@@ -40,7 +40,7 @@ Linux VM (~/.npm-global/bin/openclaw)
   │
   ├── openclaw gateway (systemd --user service, port 18789)
   │     ├── WhatsApp channel (Baileys)
-  │     │     ├── archive writer → ~/.openclaw/whatsapp/archive.sqlite
+  │     │     ├── archive writer → ~/.openclaw/whatsapp/archive.sqlite (all traffic when enabled; allowlist only affects replies)
   │     │     ├── faster-whisper transcription (voice notes)
   │     │     └── rate limiter (wraps sock.sendMessage)
   │     ├── Habitica plugin (env: HABITICA_USER_ID, HABITICA_API_KEY)
@@ -222,6 +222,10 @@ After resolving all conflicts, always run:
 openclaw doctor
 ```
 This runs any pending config migrations (e.g. cron legacy delivery migration) that upstream may have added since the last sync.
+
+### WhatsApp routing vs archive
+
+`channels.whatsapp.allowFrom` / `groupAllowFrom` (with `dmPolicy` / `groupPolicy` set to **`allowlist`**) control **who gets agent replies**. The SQLite archive, when enabled, is fed from the **raw** inbound hook and is **not** limited to the reply allowlist. Configure reply policy on the VM; use [`vm-deploy/set-wa-allowlist.sh`](vm-deploy/set-wa-allowlist.sh) as a template (edit `ALLOW_JSON` locally; do not commit real numbers).
 
 ---
 

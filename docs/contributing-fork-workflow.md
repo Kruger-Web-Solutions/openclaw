@@ -177,6 +177,7 @@ scp -i $sshKey tools\openclaw-mcp-server.mjs "${vm}:~/openclaw-custom/tools/open
 - **MCP tool scope**: The Cursor MCP server (`tools/openclaw-mcp-server.mjs`) and the OpenClaw gateway plugin system are **separate registries**. A tool added to the MCP server is only accessible from Cursor, not from the WhatsApp agent. To expose a capability to the WhatsApp agent, build a proper OpenClaw extension (like `extensions/habitica`).
 - **SparkyFitness API routes**: Routes do not match the TypeScript schema names. Discover them by reading the server's `app.use()` registrations, not the schema. Key corrections: `/food-entries?selectedDate=` not `/diary?date=`; meal type is `snacks` (plural) not `snack`; food creation uses a flat body, not nested `default_variant`; auth header is `x-api-key` not `Authorization: Bearer`. Full route table: [`docs/custom/mcp-implementation-guide.md §12`](custom/mcp-implementation-guide.md).
 - **SSH PATH**: Non-interactive SSH sessions don't source `~/.bashrc`. Always use full paths (e.g. `$HOME/.npm-global/bin/openclaw`) or `source ~/.profile` at the top of scripts. Construct `PATH` explicitly in `child_process.spawn` env.
+- **WhatsApp allowlist vs archive**: To answer only specific numbers in **DMs and groups** but still **log everything** to the archive, use `dmPolicy: "allowlist"` + `allowFrom`, and `groupPolicy: "allowlist"` + `groupAllowFrom` (not `groupPolicy: "open"`). Set `dmPolicy` before removing `"*"` from `allowFrom`. See [OpenClaw best practices §8.1](openclaw-best-practices.md#81-whatsapp-who-gets-replies-vs-what-is-archived) and [`docs/custom/vm-deploy/set-wa-allowlist.sh`](custom/vm-deploy/set-wa-allowlist.sh). Never commit real E.164 values into the repo.
 
 ---
 
@@ -203,8 +204,9 @@ scp -i $sshKey tools\openclaw-mcp-server.mjs "${vm}:~/openclaw-custom/tools/open
 | Run extension tests | `pnpm test:extension whatsapp` / `pnpm test:extension habitica` |
 | Run doctor | `openclaw doctor` |
 | Verify full system | `bash /tmp/e2e-test.sh` (SCP from `docs/custom/vm-deploy/e2e-test.sh`) |
+| WhatsApp reply allowlist (DM + group) | Edit `ALLOW_JSON` in `docs/custom/vm-deploy/set-wa-allowlist.sh`, SCP, run on VM; see [best practices §8.1](openclaw-best-practices.md#81-whatsapp-who-gets-replies-vs-what-is-archived) |
 | Day-to-day VM ops | [docs/custom/personal-assistant-runbook.md](custom/personal-assistant-runbook.md) |
-| All bugs and lessons | [docs/custom/implementation-guide.md](custom/implementation-guide.md) |
+| All bugs and lessons | [docs/custom/bugs-and-fixes.md](custom/bugs-and-fixes.md), [docs/custom/lessons-learned.md](custom/lessons-learned.md) |
 
 **See also:**
 - [OpenClaw best practices](openclaw-best-practices.md) — optimize an already-running OpenClaw (tool policy, env, cron, config).

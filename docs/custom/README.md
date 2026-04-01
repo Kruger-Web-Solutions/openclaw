@@ -58,6 +58,8 @@ This folder contains the complete knowledge base for this OpenClaw fork. Every d
 
 **PowerShell SSH command fails** → [ssh-and-vm-operations.md](ssh-and-vm-operations.md) — SCP scripts, don't inline
 
+**WhatsApp: reply only to some numbers but archive everyone** → [openclaw-best-practices.md §8.1](../openclaw-best-practices.md) and [vm-deploy/set-wa-allowlist.sh](vm-deploy/set-wa-allowlist.sh)
+
 **MCP tools not showing in Cursor** → [bugs-and-fixes.md](bugs-and-fixes.md) B10/B11 — `--no-warnings` + correct Zod types
 
 **How to add a new feature** → [architecture.md](architecture.md) — Plugin tool, WhatsApp config, MCP tool, cron, shell script
