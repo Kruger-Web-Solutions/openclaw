@@ -1,17 +1,17 @@
 import { Type } from "@sinclair/typebox";
 import { jsonResult, readStringParam } from "openclaw/plugin-sdk/agent-runtime";
 import type { HabiticaAuth } from "./api.js";
-import { createTask, fetchDashboard, fetchTasks, fetchUserStats, scoreHabit, scoreTask } from "./api.js";
+import { createTask, fetchDashboard, fetchTasks, fetchUserStats, reorderTask, scoreHabit, scoreTask, updateTask } from "./api.js";
 
 const HabiticaToolSchema = Type.Object(
   {
     action: Type.Unsafe<
-      "dashboard" | "dailies" | "habits" | "todos" | "stats" | "complete" | "create_todo" | "score_habit"
+      "dashboard" | "dailies" | "habits" | "todos" | "stats" | "complete" | "create_todo" | "update_task" | "reorder" | "score_habit"
     >({
       type: "string",
-      enum: ["dashboard", "dailies", "habits", "todos", "stats", "complete", "create_todo", "score_habit"],
+      enum: ["dashboard", "dailies", "habits", "todos", "stats", "complete", "create_todo", "update_task", "reorder", "score_habit"],
       description:
-        "Action to perform: 'dashboard' for full overview, 'dailies'/'habits'/'todos' for specific lists, 'stats' for user stats, 'complete' to mark a task done by title (preferred) or task_id, 'create_todo' to create a new task (todo/daily/habit), 'score_habit' to score a habit up or down.",
+        "Action to perform: 'dashboard' for full overview, 'dailies'/'habits'/'todos' for specific lists, 'stats' for user stats, 'complete' to mark a task done by title (preferred) or task_id, 'create_todo' to create a new task (todo/daily/habit), 'update_task' to modify an existing task, 'reorder' to move a task to a position (0-based), 'score_habit' to score a habit up or down.",
     }),
     task_id: Type.Optional(
       Type.String({ description: "Task ID — only needed for 'complete'/'score_habit' when you already have the ID. Prefer 'title' for 'complete' instead." }),
@@ -38,6 +38,27 @@ const HabiticaToolSchema = Type.Object(
         enum: ["up", "down"],
         description: "Direction to score a habit — 'up' for positive, 'down' for negative (required for 'score_habit')",
       }),
+    ),
+    repeat: Type.Optional(
+      Type.Object({
+        m: Type.Optional(Type.Boolean()),
+        t: Type.Optional(Type.Boolean()),
+        w: Type.Optional(Type.Boolean()),
+        th: Type.Optional(Type.Boolean()),
+        f: Type.Optional(Type.Boolean()),
+        s: Type.Optional(Type.Boolean()),
+        su: Type.Optional(Type.Boolean()),
+      }, { description: "Day-of-week repeat for dailies: m=Mon, t=Tue, w=Wed, th=Thu, f=Fri, s=Sat, su=Sun. Omitted days default to false." }),
+    ),
+    frequency: Type.Optional(
+      Type.Unsafe<"weekly" | "daily" | "monthly" | "yearly">({
+        type: "string",
+        enum: ["weekly", "daily", "monthly", "yearly"],
+        description: "Repeat frequency for dailies (default: weekly)",
+      }),
+    ),
+    position: Type.Optional(
+      Type.Number({ description: "0-based position to move a task to (required for reorder action)." }),
     ),
   },
   { additionalProperties: false },
@@ -70,7 +91,6 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
     execute: async (_toolCallId: string, rawParams: Record<string, unknown>) => {
       const auth = resolveAuth(authOverride);
       const action = readStringParam(rawParams, "action", { required: true }) ?? "dashboard";
-
       if (action === "dashboard") {
         const data = await fetchDashboard(auth);
         return jsonResult(data);
@@ -83,6 +103,7 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
           total: tasks.length,
           overdue: overdue.length,
           dailies: tasks.map((t) => ({
+            id: t.id,
             text: t.text,
             completed: t.completed,
             isDue: t.isDue,
@@ -164,8 +185,44 @@ export function createHabiticaTool(authOverride?: HabiticaAuth) {
         const taskType = (readStringParam(rawParams, "task_type") ?? "todo") as "todo" | "habit" | "daily";
         const notes = readStringParam(rawParams, "notes") ?? undefined;
         const priority = typeof rawParams.priority === "number" ? rawParams.priority : undefined;
-        const result = await createTask(auth, { type: taskType, text: title, notes, priority });
+        const repeat = rawParams.repeat as Record<string, boolean> | undefined;
+        const frequency = readStringParam(rawParams, "frequency") as "weekly" | "daily" | "monthly" | "yearly" | undefined;
+        const result = await createTask(auth, { type: taskType, text: title, notes, priority, repeat, frequency });
         return jsonResult({ success: true, task: result });
+      }
+
+      if (action === "update_task") {
+        const taskId = readStringParam(rawParams, "task_id");
+        if (!taskId) {
+          return jsonResult({ error: "task_id is required for the 'update_task' action" });
+        }
+        const fields: Record<string, unknown> = {};
+        const title = readStringParam(rawParams, "title");
+        if (title) fields.text = title;
+        const notes = readStringParam(rawParams, "notes");
+        if (notes !== undefined) fields.notes = notes;
+        if (typeof rawParams.priority === "number") fields.priority = rawParams.priority;
+        if (rawParams.repeat) fields.repeat = rawParams.repeat;
+        const frequency = readStringParam(rawParams, "frequency");
+        if (frequency) fields.frequency = frequency;
+        if (Object.keys(fields).length === 0) {
+          return jsonResult({ error: "Provide at least one field to update (title, notes, priority, repeat, frequency)." });
+        }
+        const result = await updateTask(auth, taskId, fields as Parameters<typeof updateTask>[2]);
+        return jsonResult({ success: true, task: result });
+      }
+
+      if (action === "reorder") {
+        const taskId = readStringParam(rawParams, "task_id");
+        if (!taskId) {
+          return jsonResult({ error: "task_id is required for the 'reorder' action" });
+        }
+        const position = typeof rawParams.position === "number" ? rawParams.position : undefined;
+        if (position === undefined) {
+          return jsonResult({ error: "position (0-based integer) is required for the 'reorder' action" });
+        }
+        const result = await reorderTask(auth, taskId, position);
+        return jsonResult({ success: true, newOrder: result });
       }
 
       if (action === "score_habit") {

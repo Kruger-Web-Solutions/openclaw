@@ -69,6 +69,16 @@ export async function scoreTask(auth: HabiticaAuth, taskId: string): Promise<unk
   return result.data;
 }
 
+export interface DayRepeat {
+  m?: boolean;
+  t?: boolean;
+  w?: boolean;
+  th?: boolean;
+  f?: boolean;
+  s?: boolean;
+  su?: boolean;
+}
+
 export async function createTask(
   auth: HabiticaAuth,
   task: {
@@ -77,6 +87,10 @@ export async function createTask(
     notes?: string;
     /** 0.1=trivial, 1=easy, 1.5=medium, 2=hard */
     priority?: number;
+    /** Day-of-week repeat map for dailies */
+    repeat?: DayRepeat;
+    /** Repeat frequency for dailies (default: weekly) */
+    frequency?: "weekly" | "daily" | "monthly" | "yearly";
   },
 ): Promise<HabiticaTask> {
   const result = await habiticaFetch(auth, "/tasks/user", {
@@ -84,6 +98,35 @@ export async function createTask(
     body: JSON.stringify(task),
   });
   return result.data as HabiticaTask;
+}
+
+export async function updateTask(
+  auth: HabiticaAuth,
+  taskId: string,
+  fields: {
+    text?: string;
+    notes?: string;
+    priority?: number;
+    repeat?: DayRepeat;
+    frequency?: "weekly" | "daily" | "monthly" | "yearly";
+  },
+): Promise<HabiticaTask> {
+  const result = await habiticaFetch(auth, `/tasks/${taskId}`, {
+    method: "PUT",
+    body: JSON.stringify(fields),
+  });
+  return result.data as HabiticaTask;
+}
+
+export async function reorderTask(
+  auth: HabiticaAuth,
+  taskId: string,
+  position: number,
+): Promise<unknown> {
+  const result = await habiticaFetch(auth, `/tasks/${taskId}/move/to/${position}`, {
+    method: "POST",
+  });
+  return result.data;
 }
 
 export async function scoreHabit(
