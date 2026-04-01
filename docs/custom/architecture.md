@@ -200,7 +200,9 @@ git merge upstream/main --no-edit
 
 | File | Resolution |
 |---|---|
-| `extensions/whatsapp/src/channel.ts` | Take upstream's imports; re-apply our archive block |
+| `extensions/whatsapp/src/channel.ts` | Take upstream's imports and new features (e.g. `reactionLevel`, reply quoting); re-apply our archive block |
+| `src/config/types.whatsapp.ts` | Take upstream's additions; keep our `archive` and `outboundRateLimit` fields |
+| `src/config/zod-schema.providers-whatsapp.ts` | Same as above — merge both sets of fields into `WhatsAppSharedSchema` |
 | `pnpm-lock.yaml` | `git checkout --theirs pnpm-lock.yaml` then `pnpm install` |
 
 ### channel.ts conflict rule
@@ -210,6 +212,16 @@ Always take upstream's structure for imports and API shape. Re-apply **only** ou
 - Extended `agentTools()` that pushes the archive tool
 - The entire archive initialization block in `startAccount`
 - `onRawMessage` passed into `monitorWebChannel`
+
+### types.whatsapp.ts / zod-schema.providers-whatsapp.ts conflict rule
+
+Upstream adds new shared WhatsApp config fields (e.g. `reactionLevel`). Keep **both** upstream's new fields and our custom fields (`archive`, `outboundRateLimit`) in `WhatsAppSharedConfig` and `WhatsAppSharedSchema`. Never remove an upstream field or an our-fork field — both need to coexist.
+
+After resolving all conflicts, always run:
+```bash
+openclaw doctor
+```
+This runs any pending config migrations (e.g. cron legacy delivery migration) that upstream may have added since the last sync.
 
 ---
 

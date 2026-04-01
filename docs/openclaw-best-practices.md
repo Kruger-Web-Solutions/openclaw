@@ -19,7 +19,7 @@ Run these after deploying a new build:
 
 | Step | Command / action |
 |------|-------------------|
-| Run doctor | `openclaw doctor` — migrates config and surfaces invalid keys. |
+| Run doctor | `openclaw doctor` — migrates config, **cron legacy delivery**, and any pending upgrades. Run this first after every upstream sync or install. |
 | Fix config if needed | `openclaw doctor --fix` or edit `~/.openclaw/openclaw.json` to remove/relocate invalid keys. |
 | Restart gateway | `systemctl --user restart openclaw-gateway` (or `openclaw gateway restart`). |
 | Check health | `openclaw health` and `openclaw gateway status`. |
@@ -115,6 +115,15 @@ Example:
 - For keys that can live at **top-level and per-account**, add them to the **shared** schema (e.g. `WhatsAppSharedSchema`) so both positions are accepted. Adding only in one place causes **"Unrecognized key"** and can block gateway startup.
 - After changing config, run **`openclaw doctor`** and fix any reported invalid keys before restarting.
 
+### New upstream config keys (available after syncing to v2026.3.x)
+
+| Key | Type | Purpose |
+|-----|------|---------|
+| `gateway.webchat.chatHistoryMaxChars` | `number` | Cap the character length of chat history sent to the model. Useful for controlling context window cost. |
+| `channels.whatsapp.reactionLevel` | `string` | Controls when the WhatsApp channel sends emoji reactions to inbound messages. See upstream docs for valid values. |
+
+These keys are now valid in the upstream config schema. Do **not** add them to `WhatsAppSharedSchema` manually — they are part of upstream's schema. Only our custom keys (`archive`, `outboundRateLimit`) need to be kept in our fork's shared schema.
+
 ---
 
 ## 7. Deployment (user service, no sudo)
@@ -138,7 +147,7 @@ Example:
 
 When optimizing an **already-running** OpenClaw after an update:
 
-1. **Config** — Run `openclaw doctor`; fix invalid keys; ensure `tools.alsoAllow: ["group:plugins"]` if using plugin tools.
+1. **Config** — Run `openclaw doctor` (migrates cron delivery, config keys, and other pending upgrades); fix invalid keys; ensure `tools.alsoAllow: ["group:plugins"]` if using plugin tools.
 2. **Models** — Add `agents.defaults.model.fallbacks` if the primary model often hits capacity.
 3. **Env** — Set plugin secrets (e.g. Habitica) in **systemd service** and **shell profile**; `daemon-reload` and restart.
 4. **TOOLS.md** — Align with native tools; instruct agent to use tools directly; protect from synthesis overwrite if needed.

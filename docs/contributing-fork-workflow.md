@@ -83,10 +83,12 @@ git merge upstream/main --no-edit
 
 ### 3.2 Resolve conflicts
 
-- **Typical conflict files**: `extensions/whatsapp/src/channel.ts`, `docs/tools/plugin.md`, sometimes `pnpm-lock.yaml`.
-- **channel.ts**: Upstream often refactors imports (e.g. from `openclaw/plugin-sdk/whatsapp` to local `./runtime-api.js`, `./directory-config.js`, `./group-policy.js`). **Keep upstream's structure** and re-apply **only our custom blocks** (e.g. archive imports, `archiveDb`, archive logic in `startAccount`, `onRawMessage`). Do not keep our old import paths if upstream has moved them.
-- **docs/tools/plugin.md**: Prefer upstream's doc structure (e.g. "Model providers / Speech providers" sections) unless we have a deliberate fork-specific addition.
+- **Typical conflict files**: `extensions/whatsapp/src/channel.ts`, `src/config/types.whatsapp.ts`, `src/config/zod-schema.providers-whatsapp.ts`, `docs/tools/plugin.md`, sometimes `pnpm-lock.yaml`.
+- **channel.ts**: Upstream frequently adds new WhatsApp features (reaction guidance levels, reply quoting, etc.) alongside our archive/rate-limiter blocks. **Keep upstream's structure** and re-apply **only our custom additions**: archive imports and `archiveDb`, extended `agentTools()` with archive tool, the archive init block in `startAccount`, and `onRawMessage` passed into `monitorWebChannel`. Do not keep old import paths if upstream has moved them.
+- **types.whatsapp.ts / zod-schema.providers-whatsapp.ts**: Upstream now adds new fields to the shared WhatsApp config (e.g. `reactionLevel`). Take upstream's additions and keep ours (`archive`, `outboundRateLimit`). Both belong in `WhatsAppSharedSchema` so they're valid at top-level and per-account.
+- **docs/tools/plugin.md**: Prefer upstream's doc structure unless we have a deliberate fork-specific addition.
 - **pnpm-lock.yaml**: If conflicted, take one side (e.g. `git checkout --theirs pnpm-lock.yaml`) then run `pnpm install` to regenerate.
+- **After resolving**: Run `openclaw doctor` immediately — upstream periodically moves config migrations (e.g. cron legacy delivery) into the doctor command. It will run any pending migrations and flag invalid keys.
 
 After resolving:
 
@@ -126,6 +128,7 @@ Use **[DEPLOY.md](/DEPLOY.md)** as the canonical deployment guide. Apply these *
 | **After editing the service file** | Run **`systemctl --user daemon-reload`** before restart. |
 | **Docker on Ubuntu 20.04** | Never use `curl -fsSL https://get.docker.com \| sudo sh` — the `docker-model-plugin` package doesn't exist on focal and the script fails. Install via apt directly: `sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-buildx-plugin`. |
 | **PostgreSQL on Docker** | Pin to `postgres:16-alpine` via a `docker-compose.override.yml`. postgres 18+ changed the data directory structure and breaks existing volume mounts. |
+| **Bundled plugin deps after global install** | Since upstream `fix: run bundled deps postinstall for global npm`, bundled plugin dependencies are automatically installed after `npm i -g .`. If you see missing bundled plugin errors on an older build, upgrade to a version containing this fix or run `npm run postinstall` in the global install prefix manually. |
 
 **VM deployment — use the orchestration scripts** in `docs/custom/vm-deploy/`:
 
@@ -161,7 +164,9 @@ scp -i $sshKey tools\openclaw-mcp-server.mjs "${vm}:~/openclaw-custom/tools/open
 - **Plugin registration**: If a plugin checks env vars at **registration** time, the tool can be missing when the agent runs in a different process (e.g. CLI) that doesn't have those env vars. Prefer resolving secrets **at execution time** and always registering the tool.
 - **Tool allowlists**: Use **`tools.alsoAllow: ["group:plugins"]`** (or the correct allowlist) so plugin tools (e.g. `habitica`, `wa_archive`) are allowed; otherwise the agent may try to use `exec` or shell wrappers instead of the native tools.
 - **Cron prompts**: Both work for this fork: the native **`habitica`** plugin tool and **`~/bin/`** shell scripts (e.g. `wa_archive`, `habitica`, `sparky_fitness`, `todoist_tasks`) invoked via **`exec`**. Avoid raw SQL or one-off unmaintained scripts.
+- **Cron legacy delivery migration**: Upstream moved cron legacy-delivery config migration into `openclaw doctor`. After any upstream sync, **always run `openclaw doctor`** so pending cron migrations execute and no crons break silently.
 - **Cron CLI syntax**: `openclaw cron add` uses **named flags** (`--name`, `--cron`, `--tz`, `--message`, `--announce`). There is no `--job` JSON flag. Run `openclaw cron add --help` to verify before scripting.
+- **qmd memory patterns**: If cron prompts reference qmd collection scoping, use `--mask` not `--glob` (upstream fix #58736 aligned the flag name). Old `--glob` patterns may silently match nothing.
 - **High-frequency crons**: Avoid agent-turn crons every 1–5 minutes; they burn API credits and add little value. Prefer daily or task-based schedules.
 - **MCP tool scope**: The Cursor MCP server (`tools/openclaw-mcp-server.mjs`) and the OpenClaw gateway plugin system are **separate registries**. A tool added to the MCP server is only accessible from Cursor, not from the WhatsApp agent. To expose a capability to the WhatsApp agent, build a proper OpenClaw extension (like `extensions/habitica`).
 - **SparkyFitness API routes**: Routes do not match the TypeScript schema names. Discover them by reading the server's `app.use()` registrations, not the schema. Key corrections: `/food-entries?selectedDate=` not `/diary?date=`; meal type is `snacks` (plural) not `snack`; food creation uses a flat body, not nested `default_variant`; auth header is `x-api-key` not `Authorization: Bearer`. Full route table: [`docs/custom/mcp-implementation-guide.md §12`](custom/mcp-implementation-guide.md).
@@ -185,6 +190,7 @@ scp -i $sshKey tools\openclaw-mcp-server.mjs "${vm}:~/openclaw-custom/tools/open
 | Fetch latest upstream | `git fetch upstream` |
 | See how far ahead upstream is | `git log --oneline main..upstream/main` |
 | Merge upstream into a branch | `git checkout -b merge-upstream-main` then `git merge upstream/main` |
+| Run doctor after merge | `openclaw doctor` (migrates cron delivery, config, and other pending upgrades) |
 | Deploy on VM (full) | `.\docs\custom\vm-deploy\deploy-all.ps1` (PowerShell from repo root) |
 | Deploy on VM (code only) | SCP + run `phase2-deploy-code.sh` — see §4 above |
 | Restart gateway (user service) | `systemctl --user restart openclaw-gateway` |
