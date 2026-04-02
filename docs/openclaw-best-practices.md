@@ -162,6 +162,9 @@ Order matters when changing policy: set `dmPolicy` to **`allowlist`** before shr
 
 - **Stale WhatsApp warnings**: If you already use `dmPolicy` / `groupPolicy` **`allowlist`**, re-run the audit after a gateway restart. Older reports can still show `open` from a previous config snapshot.
 - **Credentials directory**: If the audit reports mode `775` (group/world accessible), fix on the gateway host: `chmod 700 ~/.openclaw/credentials`.
+- **Main log file**: If `~/.openclaw/logs/openclaw.log` is mode `664`, tighten with `chmod 600 ~/.openclaw/logs/openclaw.log` (logs can include message content).
+- **`gateway.nodes.denyCommands` “unknown” / ineffective**: Node allowlists are built from each platform’s **default** allowed commands plus `allowCommands`, minus `denyCommands`. Dangerous IDs such as `camera.snap` or `sms.send` are **not** in the default allowlist, so listing them under `denyCommands` often **does nothing**. Prefer an empty `denyCommands` (or omit it) unless you are explicitly removing a command that would otherwise be allowed; use `allowCommands` only when you intentionally opt into risky node commands.
+- **`tools.exec.security` = `full`**: The audit warns because this disables exec allowlisting. For a **single-operator personal VM**, that tradeoff is often intentional (see INFO “trust model”). Tighten only if you expose the gateway beyond a boundary you trust.
 - **`gateway.bind` not loopback** (e.g. `lan`): Configure **`gateway.auth.rateLimit`** so failed token attempts are throttled (example: `maxAttempts` 10, `windowMs` 60000, `lockoutMs` 300000). A helper script is in [`docs/custom/vm-deploy/apply-security-hardening.sh`](custom/vm-deploy/apply-security-hardening.sh).
 
 ---
