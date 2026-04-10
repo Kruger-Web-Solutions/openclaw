@@ -8,7 +8,7 @@
 #   log_water <ml>                   log water intake
 #   weight [kg]                      log or read today weight
 #   sleep                            read today sleep
-#   log_food <name> <meal> <g> [cal] [prot] [carbs] [fat]
+#   log_food <name> <meal> <grams> <calories> <protein_g> <carbs_g> <fat_g>
 
 set -euo pipefail
 
@@ -40,15 +40,26 @@ case "$ACTION" in
     GOALS=$(cat "$TMP")
     _get "/measurements/water-intake/$TODAY" 2>/dev/null || echo "{}" > "$TMP"
     WATER=$(cat "$TMP")
+    _get "/food-entries?selectedDate=$TODAY" 2>/dev/null || echo "[]" > "$TMP"
+    ENTRIES=$(cat "$TMP")
     python3 -c "
 import json, sys
 stats = json.loads(sys.argv[1])
 goals = json.loads(sys.argv[2])
 water_data = json.loads(sys.argv[3])
-cal   = stats.get('eaten') or stats.get('totalCalories') or stats.get('calories') or 0
-prot  = stats.get('totalProtein')  or stats.get('protein')  or 0
-carb  = stats.get('totalCarbs')    or stats.get('carbs')    or 0
-fat   = stats.get('totalFat')      or stats.get('fat')      or 0
+raw = json.loads(sys.argv[4])
+entries = raw if isinstance(raw, list) else [raw]
+entries = [e for e in entries if isinstance(e, dict) and e]
+sum_cal = sum(float(e.get('calories') or 0) for e in entries)
+sum_prot = sum(float(e.get('protein') or 0) for e in entries)
+sum_carb = sum(float(e.get('carbs') or 0) for e in entries)
+sum_fat = sum(float(e.get('fat') or 0) for e in entries)
+# /dashboard/stats has reliable eaten kcal but (currently) no macro totals — sum macros from food-entries.
+eaten = stats.get('eaten')
+cal = float(eaten) if eaten is not None else sum_cal
+if cal == 0 and sum_cal:
+    cal = sum_cal
+prot, carb, fat = sum_prot, sum_carb, sum_fat
 water = water_data.get('water_ml') or 0
 gcal  = goals.get('calories') or 0
 gprot = goals.get('protein')  or 0
@@ -61,7 +72,7 @@ print(f'  Protein:  {float(prot):.1f} / {float(gprot):.1f}g')
 print(f'  Carbs:    {float(carb):.1f} / {float(gcarb):.1f}g')
 print(f'  Fat:      {float(fat):.1f} / {float(gfat):.1f}g')
 print(f'  Water:    {float(water):.0f} / {float(gwater):.0f} ml')
-" "$STATS" "$GOALS" "$WATER"
+" "$STATS" "$GOALS" "$WATER" "$ENTRIES"
     ;;
 
   diary)
@@ -153,7 +164,7 @@ else:
 
   *)
     echo "Unknown action: $ACTION"
-    echo "Usage: sparky_fitness summary|diary|goals|log_water [ml]|weight [kg]|sleep|log_food <name> <meal> <g>"
+    echo "Usage: sparky_fitness summary|diary|goals|log_water [ml]|weight [kg]|sleep|log_food <name> <meal> <g> <kcal> <protein> <carbs> <fat>"
     exit 1
     ;;
 esac

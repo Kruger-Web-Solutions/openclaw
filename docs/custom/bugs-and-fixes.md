@@ -141,6 +141,14 @@ fi
 
 **Fix:** In `~/bin/sparky_fitness`, set the logical date with `TZ=Africa/Johannesburg` (or `SPARKY_LOCAL_TZ`). Canonical repo copy: [`docs/custom/vm-deploy/sparky_fitness`](vm-deploy/sparky_fitness).
 
+### B-SF8. `sparky_fitness summary` shows 0 protein/carbs/fat despite logged food
+
+**Symptom:** Calories from `summary` look right (from `/dashboard/stats` `eaten`) but P/C/F stay at 0.
+
+**Root cause:** SparkyFitness `/dashboard/stats` returns calorie totals only; it does not expose macro sums. Macros exist on each `/food-entries` row.
+
+**Fix:** `summary` aggregates protein/carbs/fat by summing today's `food-entries` (repo script updated accordingly).
+
 ---
 
 ## WhatsApp
