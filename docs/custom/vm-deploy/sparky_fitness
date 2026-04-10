@@ -14,7 +14,10 @@ set -euo pipefail
 
 TOKEN=$(cat "$HOME/.openclaw/secrets/sparky-token" 2>/dev/null || true)
 BASE="http://localhost:3004/api"
-TODAY=$(date +%Y-%m-%d)
+# Gateway VM often runs UTC; logs/summary must use the operator's calendar day (SAST by default).
+# Override: export SPARKY_LOCAL_TZ=UTC (or your IANA zone).
+SPARKY_LOCAL_TZ="${SPARKY_LOCAL_TZ:-Africa/Johannesburg}"
+TODAY=$(TZ="$SPARKY_LOCAL_TZ" date +%Y-%m-%d)
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
 

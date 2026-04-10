@@ -133,6 +133,14 @@ fi
 
 **Fix:** Aligned with MCP server's working implementation.
 
+### B-SF7. Sparky writes land on the "wrong day" or look like failed writes (UTC VM vs SAST operator)
+
+**Symptom:** Bot runs `sparky_fitness log_food` / `log_water` "successfully" but the entry does not show on today's diary in the app, or summary looks empty for "today".
+
+**Root cause:** The gateway host uses **UTC** (`timedatectl` shows `Etc/UTC`) while the operator's day boundary is **SAST**. For roughly **00:00–01:59 SAST**, `date +%Y-%m-%d` on the server is still the **previous** calendar date, so writes go to `entry_date` one day behind.
+
+**Fix:** In `~/bin/sparky_fitness`, set the logical date with `TZ=Africa/Johannesburg` (or `SPARKY_LOCAL_TZ`). Canonical repo copy: [`docs/custom/vm-deploy/sparky_fitness`](vm-deploy/sparky_fitness).
+
 ---
 
 ## WhatsApp
