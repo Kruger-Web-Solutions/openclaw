@@ -9,6 +9,8 @@
 #   weight [kg]                      log or read today weight
 #   sleep                            read today sleep
 #   log_food <name> <meal> <grams> <calories> <protein_g> <carbs_g> <fat_g>
+#   delete_entry <entry_uuid>        DELETE /food-entries/:id (get id from: diary_json)
+#   purge_test_foods                   remove DiagTest*/WriteTest* entries for logical today
 
 set -euo pipefail
 
@@ -28,6 +30,7 @@ fi
 
 _get()  { curl -sf -H "x-api-key: $TOKEN" "$BASE$1" -o "$TMP"; }
 _post() { curl -sf -X POST -H "x-api-key: $TOKEN" -H "Content-Type: application/json" -d "$2" "$BASE$1" -o "$TMP"; }
+_delete() { curl -sf -X DELETE -H "x-api-key: $TOKEN" "$BASE$1" -o "$TMP"; }
 
 ACTION="${1:-summary}"
 
@@ -162,9 +165,55 @@ else:
     echo "Logged ${GRAMS}g of $FOOD_NAME ($MEAL) for $TODAY."
     ;;
 
+  delete_entry)
+    EID="${2:?food entry id (uuid) required}"
+    _delete "/food-entries/$EID"
+    echo "Deleted food entry $EID — $(head -c 200 "$TMP" | tr -d '\n')"
+    ;;
+
+  diary_json)
+    _get "/food-entries?selectedDate=$TODAY"
+    cat "$TMP"
+    echo ""
+    ;;
+
+  purge_test_foods)
+    _get "/food-entries?selectedDate=$TODAY"
+    SPARKY_TOKEN="$TOKEN" SPARKY_BASE="$BASE" python3 - "$TMP" <<'PY'
+import json, os, sys, urllib.error, urllib.request
+
+path = sys.argv[1]
+token = os.environ["SPARKY_TOKEN"]
+base = os.environ["SPARKY_BASE"].rstrip("/")
+entries = json.load(open(path))
+entries = entries if isinstance(entries, list) else [entries]
+needles = ("DiagTest", "WriteTest")
+removed = 0
+for e in entries:
+    if not isinstance(e, dict):
+        continue
+    name = str(e.get("food_name") or e.get("name") or "")
+    if not any(n in name for n in needles):
+        continue
+    eid = e.get("id")
+    if not eid:
+        continue
+    url = f"{base}/food-entries/{eid}"
+    req = urllib.request.Request(url, method="DELETE", headers={"x-api-key": token})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            r.read()
+        print(f"Removed {eid} ({name})")
+        removed += 1
+    except urllib.error.HTTPError as err:
+        print(f"FAILED {eid} ({name}): HTTP {err.code}")
+print(f"Total removed: {removed}")
+PY
+    ;;
+
   *)
     echo "Unknown action: $ACTION"
-    echo "Usage: sparky_fitness summary|diary|goals|log_water [ml]|weight [kg]|sleep|log_food <name> <meal> <g> <kcal> <protein> <carbs> <fat>"
+    echo "Usage: sparky_fitness summary|diary|diary_json|goals|log_water [ml]|weight [kg]|sleep|delete_entry <uuid>|purge_test_foods|log_food <name> <meal> <g> <kcal> <protein> <carbs> <fat>"
     exit 1
     ;;
 esac
